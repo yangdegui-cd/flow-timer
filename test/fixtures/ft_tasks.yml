@@ -1,0 +1,33 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  name: MyString
+  description: MyString
+  taks_id: MyString
+  flow_id: MyString
+  catalog_id: 
+  status: MyString
+  task_type: MyString
+  period_type: MyString
+  cron_expression: MyString
+  effective_time: 2025-08-08 16:50:17
+  lose_efficacy_time: 2025-08-08 16:50:17
+  params: 
+  queue: MyString
+  priority: 1
+
+two:
+  name: MyString
+  description: MyString
+  taks_id: MyString
+  flow_id: MyString
+  catalog_id: 
+  status: MyString
+  task_type: MyString
+  period_type: MyString
+  cron_expression: MyString
+  effective_time: 2025-08-08 16:50:17
+  lose_efficacy_time: 2025-08-08 16:50:17
+  params: 
+  queue: MyString
+  priority: 1

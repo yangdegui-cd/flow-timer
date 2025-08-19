@@ -1,0 +1,368 @@
+require 'sequel'
+require 'trino/client'
+
+class DatasourceAdapterService
+
+  def initialize(meta_database)
+    @meta_database = meta_database
+  end
+
+  # 测试数据库连接
+  def test_connection
+    begin
+      # 创建数据库连接
+      get_connection_client
+      # 根据数据库类型执行不同的测试查询
+      result = case @meta_database.db_type
+               when 'mysql', 'mariadb'
+                 test_mysql_connection
+               when 'postgresql'
+                 test_postgresql_connection
+               when 'sqlite'
+                 test_sqlite_connection
+               when 'oracle'
+                 test_oracle_connection
+               when 'sqlserver'
+                 test_sqlserver_connection
+               when 'trino'
+                 test_trino_connection
+               when 'hive'
+                 test_hive_connection
+               else
+                 { success: false, message: "不支持的数据库类型: #{database_config[:db_type] || database_config['db_type']}" }
+               end
+      # 关闭连接
+      close_connection
+      result
+    rescue => e
+      e.backtrace.each { |line| Rails.logger.error(line) }
+      Rails.logger.error "数据库连接测试失败: #{e.message}"
+      {
+        success: false,
+        message: "连接失败: #{e.message}",
+        error: e.class.name,
+        test_time: Time.current.iso8601
+      }
+    end
+  end
+
+  def execute(sql)
+    get_connection_client
+    case @meta_database.db_type
+    when 'trino'
+      exec = @client.query(sql)
+      loop do
+        break unless exec.send(:advance_and_raise)
+      end
+    else
+      @client.run(sql)
+    end
+    close_connection
+  end
+
+  def query(sql)
+    get_connection_client
+    case @meta_database.db_type
+    when 'trino'
+      @client.run_with_names(sql)
+    else
+      @client.fetch(sql)
+    end
+    close_connection
+  end
+
+
+
+  # 获取数据库列表
+  def get_databases(database_config, catalog = nil)
+    begin
+      db = Sequel.connect(connection_url)
+
+      databases = case database_config[:db_type] || database_config['db_type']
+                  when 'mysql', 'mariadb'
+                    db.fetch("SHOW DATABASES").map { |row| row[:Database] }
+                  when 'postgresql'
+                    db.fetch("SELECT datname FROM pg_database WHERE datistemplate = false").map { |row| row[:datname] }
+                  when 'sqlite'
+                    ['main'] # SQLite 只有一个数据库
+                  when 'trino'
+                    get_trino_schemas(database_config, catalog)
+                  else
+                    []
+                  end
+
+      db.disconnect
+      databases
+
+    rescue => e
+      Rails.logger.error "获取数据库列表失败: #{e.message}"
+      []
+    end
+  end
+
+  # 获取 Schema 列表
+  def get_schemas(database_config, database_name, catalog = nil)
+    connection_url = build_connection_url(database_config, database_name)
+
+    begin
+      db = Sequel.connect(connection_url)
+
+      schemas = case database_config[:db_type] || database_config['db_type']
+                when 'postgresql'
+                  db.fetch("SELECT schema_name FROM information_schema.schemata WHERE schema_name NOT IN ('information_schema', 'pg_catalog', 'pg_toast')").map { |row| row[:schema_name] }
+                when 'mysql', 'mariadb'
+                  [] # MySQL 没有 schema 概念
+                when 'trino'
+                  get_trino_tables(database_config, catalog, database_name).map { |table| table.split('.').first }.uniq
+                else
+                  []
+                end
+
+      db.disconnect
+      schemas
+
+    rescue => e
+      Rails.logger.error "获取Schema列表失败: #{e.message}"
+      []
+    end
+  end
+
+  # 获取 Catalog 列表（主要用于 Trino）
+  def get_catalogs(database_config)
+    case database_config[:db_type] || database_config['db_type']
+    when 'trino'
+      get_trino_catalogs(database_config)
+    else
+      []
+    end
+  end
+
+  # 执行 SQL 语句
+  def execute_sql(database_config, sql, options = {})
+    connection_url = build_connection_url(database_config, options[:database])
+
+    begin
+      db = Sequel.connect(connection_url)
+
+      start_time = Time.current
+
+      # 根据 SQL 类型执行不同操作
+      if sql.strip.upcase.start_with?('SELECT', 'SHOW', 'DESCRIBE', 'EXPLAIN')
+        # 查询语句
+        dataset = db.fetch(sql)
+
+        # 限制返回行数
+        max_rows = options[:max_rows] || 1000
+        rows = dataset.limit(max_rows).all
+
+        columns = rows.empty? ? [] : rows.first.keys.map(&:to_s)
+
+        result = {
+          success: true,
+          data: rows,
+          columns: columns,
+          rows_returned: rows.size,
+          execution_time: (Time.current - start_time) * 1000,
+          test_time: Time.current.iso8601
+        }
+      else
+        # 非查询语句
+        affected_rows = db.run(sql)
+
+        result = {
+          success: true,
+          rows_affected: affected_rows,
+          execution_time: (Time.current - start_time) * 1000,
+          test_time: Time.current.iso8601
+        }
+      end
+
+      db.disconnect
+      result
+
+    rescue => e
+      {
+        success: false,
+        message: "SQL执行失败: #{e.message}",
+        error: e.class.name,
+        execution_time: options[:timeout] ? options[:timeout] * 1000 : 0,
+        test_time: Time.current.iso8601
+      }
+    end
+  end
+
+  private
+
+  # 构建连接URL
+  def get_connection_client(schema = nil)
+    db_type = @meta_database.db_type
+    host = @meta_database.host
+    port = @meta_database.port
+    username = @meta_database.username
+    password = @meta_database.password
+
+    # 解密密码（如果已加密）
+    if password && password.length > 0
+      begin
+        password = Base64.decode64(password)
+      rescue
+        # 如果解码失败，假设密码未加密
+      end
+    end
+
+    url = case db_type
+          when 'mysql', 'mariadb'
+            schema ||= 'mysql'
+            "mysql2://#{username}:#{password}@#{host}:#{port}/#{schema}"
+          when 'postgresql'
+            schema ||= 'postgres'
+            "postgres://#{username}:#{password}@#{host}:#{port}/#{schema}"
+          when 'oracle'
+            schema ||= @meta_database.extra_config.dig('service_name') || 'ORCL'
+            "oracle://#{username}:#{password}@#{host}:#{port}/#{schema}"
+          when 'sqlserver'
+            schema ||= 'master'
+            "tinytds://#{username}:#{password}@#{host}:#{port}/#{schema}"
+          when 'hive'
+            schema ||= 'default'
+            "hive://#{username}:#{password}@#{host}:#{port}/#{schema}"
+          when 'trino'
+            schema ||= ''
+            ""
+          else
+            raise "不支持的数据库类型: #{db_type}"
+          end
+    if db_type == 'trino'
+      catalog = @meta_database.extra_config['catalog'] || 'system'
+      @client = Trino::Client.new({
+                                    server: "#{host}:#{port}",
+                                    user: username,
+                                    password: password,
+                                    catalog: catalog,
+                                    schema: schema || 'information_schema',
+                                    ssl: { verify: @meta_database.extra_config['ssl_verify'] || true },
+                                    source: @meta_database.extra_config['source'] || 'stat_dws',
+                                    language: "Chinese",
+                                    time_zone: @meta_database.extra_config['time_zone'] || 'Asia/Shanghai',
+                                    query_timeout: @meta_database.extra_config['query_timeout'] || 60 * 60 * 2,
+                                    http_debug: @meta_database.extra_config['http_debug'] || false
+                                  })
+    else
+      @client = Sequel.connect(url, :test => true)
+    end
+
+  end
+
+  def close_connection
+    case @meta_database.db_type
+    when 'trino'
+      # 不需要
+    else
+      @client.disconnect
+    end
+  end
+
+  # MySQL/MariaDB 连接测试
+  def test_mysql_connection
+    # 测试基本连接
+    @client.fetch("SELECT 1 AS test").first
+
+    # 获取数据库列表
+    databases = @client.fetch("SHOW DATABASES").map { |row| row[:Database] }
+    {
+      success: true,
+      message: "MySQL/MariaDB 连接成功",
+      databases: databases,
+      test_time: Time.current.iso8601
+    }
+  end
+
+  # PostgreSQL 连接测试
+  def test_postgresql_connection
+    # 测试基本连接
+    @client.fetch("SELECT 1 AS test").first
+
+    # 获取数据库列表
+    databases = @client.fetch("SELECT datname FROM pg_database WHERE datistemplate = false").map { |row| row[:datname] }
+
+    {
+      success: true,
+      message: "PostgreSQL 连接成功",
+      databases: databases,
+      test_time: Time.current.iso8601
+    }
+  end
+
+  # SQLite 连接测试
+  def test_sqlite_connection
+    # 测试基本连接
+    @client.fetch("SELECT 1 AS test").first
+
+    {
+      success: true,
+      message: "SQLite 连接成功",
+      databases: ['main'],
+      test_time: Time.current.iso8601
+    }
+  end
+
+  # Oracle 连接测试
+  def test_oracle_connection
+    # 测试基本连接
+    @client.fetch("SELECT 1 FROM dual").first
+
+    {
+      success: true,
+      message: "Oracle 连接成功",
+      test_time: Time.current.iso8601
+    }
+  end
+
+  # SQL Server 连接测试
+  def test_sqlserver_connection
+    @client.fetch("SELECT 1 AS test").first
+    databases = @client.fetch("SELECT name FROM sys.databases WHERE database_id > 4").map { |row| row[:name] }
+    {
+      success: true,
+      message: "SQL Server 连接成功",
+      databases: databases,
+      test_time: Time.current.iso8601
+    }
+  end
+
+  # Trino 连接测试
+  def test_trino_connection
+    catalogs = @client.run_with_name("SHOW CATALOGS")
+    {
+      success: true,
+      message: "Trino 连接成功",
+      catalogs: catalogs.map { |row| row[:catalog] },
+      test_time: Time.current.iso8601
+    }
+  end
+
+  # Hive 连接测试
+  def test_hive_connection
+    # Hive 通常通过 Thrift 接口或 JDBC 连接
+    # 这里提供一个基本的实现框架
+    {
+      success: true,
+      message: "Hive 连接配置已保存，请确保 Hive 服务可用",
+      test_time: Time.current.iso8601
+    }
+  end
+
+  # 获取 Trino Catalogs
+  def get_trino_catalogs(db)
+    db.fetch("SHOW CATALOGS").map { |row| row[:catalog] }
+  end
+
+  def get_trino_schemas(config, catalog)
+
+    []
+  end
+
+  def get_trino_tables(config, catalog, schema)
+    []
+  end
+end

@@ -1,0 +1,24 @@
+# OAuth 配置示例文件
+# 在生产环境中，请使用 Rails credentials 或环境变量来存储这些敏感信息
+
+github:
+  key: "your_github_client_id"
+  secret: "your_github_client_secret"
+  # 获取方式：
+  # 1. 访问 https://github.com/settings/developers
+  # 2. 创建新的 OAuth App
+  # 3. Authorization callback URL: http://localhost:3000/auth/github/callback
+
+wechat:
+  app_id: "your_wechat_app_id"
+  app_secret: "your_wechat_app_secret"
+  # 获取方式：
+  # 1. 访问微信开放平台 https://open.weixin.qq.com/
+  # 2. 创建网站应用
+  # 3. 配置回调域名: localhost:3000
+
+# 临时环境变量配置（仅用于开发测试）
+# export GITHUB_CLIENT_ID="your_github_client_id"
+# export GITHUB_CLIENT_SECRET="your_github_client_secret"  
+# export WECHAT_APP_ID="your_wechat_app_id"
+# export WECHAT_APP_SECRET="your_wechat_app_secret"

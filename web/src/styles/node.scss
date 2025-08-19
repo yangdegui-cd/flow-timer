@@ -1,0 +1,154 @@
+:root {
+  --custom-node-container_min_height: 60px;
+  --custom-node-icon_background: #f3f4f6;
+  --custom-node-icon_background_hover: #e5e7eb;
+
+  --custom-node-icon_border: var(--ga-border);
+  --custom-node-icon_border_hover: var(--custom-node_background_hover);
+  --custom-node-icon_color: #3b82f6;
+
+  --custom-node-icon_color_hover: var(--custom-node-icon_color);
+  --custom-node_background: #fff;
+  --custom-node_background_active: var(--custom-node_background);
+
+  --custom-node_background_hover: #fff;
+  --custom-node_border: var(--ga-border);
+
+  --custom-node_border_active: 1px solid #6366f1;
+  --custom-node_border_hover: var(--ga-border);
+
+  --custom-node_boxshadow: none;
+  --custom-node_boxshadow_active: 0 0 10px rgba(99, 102, 241, 0.5);
+
+  --custom-node_boxshadow_hover: 0 0 10px rgba(99, 102, 241, 0.2);
+}
+.custom-node.toolbar {
+  cursor: move;
+  --custom-node-container_min_height: 40px;
+}
+
+.custom-node {
+  background: var(--custom-node_background);
+  border: var(--custom-node_border);
+  border-radius: 8px;
+  box-shadow: var(--custom-node_boxshadow);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  overflow: hidden;
+  position: relative;
+  transition: all 0.2s ease;
+  width: 180px;
+  .custom-node-container {
+    display: flex;
+    min-height: var(--custom-node-container_min_height);
+  }
+  .custom-node-container_icon {
+    align-items: center;
+    background: var(--custom-node-icon_background);
+    border-right: var(--custom-node-icon_border);
+    display: flex;
+    justify-content: center;
+    position: relative;
+    width: 40px;
+    .db-icon {
+      color: var(--custom-node-icon_color);
+      font-size: 24px;
+    }
+    .input-icon, .output-icon {
+      bottom: 0;
+      position: absolute;
+      right: 0;
+      z-index: auto;
+    }
+    .input-icon {
+      color: #10b981;
+    }
+    .output-icon {
+      color: #f67f09;
+    }
+  }
+  .custom-node-container_content {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    justify-content: center;
+    padding: 12px;
+    background: white;
+    .name-label {
+      color: #1f2937;
+      font-size: 14px;
+      font-weight: bold;
+      margin-bottom: 6px;
+    }
+    sapn {
+      color: #1f2937;
+      font-size: 14px;
+      margin-bottom: 6px;
+    }
+  }
+
+  &:hover {
+    background: var(--custom-node_background_hover);
+    border: var(--custom-node_border_hover);
+    box-shadow: var(--custom-node_boxshadow_hover);
+    .custom-node-container_icon {
+      background: var(--custom-node-icon_background_hover);
+      border: var(--custom-node-icon_border_hover);
+      .db-icon {
+        color: var(--custom-node-icon_color_hover);
+      }
+    }
+  }
+  &.active {
+    background: var(--custom-node_background_active);
+    border: var(--custom-node_border_active);
+    box-shadow: var(--custom-node_boxshadow_active);
+    .custom-node-container_icon {
+      background: var(--custom-node-icon_background_hover);
+      border: var(--custom-node-icon_border_hover);
+      .db-icon {
+        color: var(--custom-node-icon_color_hover);
+      }
+    }
+  }
+}
+
+/* 跑马灯高光 */
+
+.running {
+  position: relative;
+  padding: 3px;
+  background: transparent;
+  border-color: transparent;
+}
+.running::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  left: 3px;
+  top: 3px;
+  width: calc(100% - 6px);
+  height: calc(100% - 6px);
+  border-radius: 5px;
+}
+
+.running::after {
+  content: "";
+  position: absolute;
+  z-index: -2;
+  left: -50%;
+  top: -50%;
+  width: 200%;
+  height: 200%;
+  background-color: transparent;
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  background-image: conic-gradient(transparent, #27f839, transparent 30%);
+  -webkit-animation: rotate 4s linear infinite;
+  animation: rotate 1s linear infinite;
+}
+
+@keyframes rotate {
+  100% {
+    transform: rotate(1turn);
+  }
+}

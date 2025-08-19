@@ -1,0 +1,21 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  name: MyString
+  flow_id: MyString
+  description: MyText
+  params: 
+  flow: 
+  version: 1
+  catalog: 1
+  status: MyString
+
+two:
+  name: MyString
+  flow_id: MyString
+  description: MyText
+  params: 
+  flow: 
+  version: 1
+  catalog: 1
+  status: MyString

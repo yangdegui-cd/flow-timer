@@ -1,0 +1,17 @@
+.db-icon {
+  font-size: 24px;
+  color: var(--custom-node-icon_color);
+}
+.ga-icon{
+  width: 1em;
+  height: 1em;
+}
+.label-icon {
+  font-size: 20px;
+  width: 24px;
+  color: #659cf8;
+  margin-right: 10px;
+  &.active{
+    color: var(--custom-node-icon_color);
+  }
+}

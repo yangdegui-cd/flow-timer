@@ -1,0 +1,34 @@
+.layout{
+  --layout-sider-width: 200px
+}
+
+.layout{
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+.layout{
+  .ant-layout-sider{
+    width: var(--layout-sider-width) !important;
+    height: 100%;
+    overflow: hidden;
+    padding: 0;
+    box-shadow: var(--ga-boxshadow);
+  }
+  .ant-layout-sider .ant-layout-sider-children{
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+    overflow: hidden;
+
+  }
+  .ant-menu-item{
+    span{
+      display: inline-flex;
+      align-items: center;
+    }
+  }
+}
+
+
