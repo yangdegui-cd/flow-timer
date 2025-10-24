@@ -2,28 +2,15 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { actionCableService } from '@/services/actioncable'
-import {
-  ApiGetResqueStats,
-  ApiGetResqueQueues,
-  ApiGetResqueWorkers,
-  ApiGetResqueFailedJobs,
-  ApiRetryFailedJob,
-  ApiClearFailedJobs,
-  ApiClearQueue,
-  ApiRemoveQueue,
-  ApiRestartWorkers,
-  ApiGetResqueScheduledJobs,
-  ApiGetResqueDelayedJobs,
-  ApiClearDelayedJobs,
-  ApiRequeueAllFailedJobs,
-  ApiRemoveFailedJob,
-  type ResqueStats,
-  type ResqueQueue,
-  type ResqueWorker,
-  type ResqueFailedJob,
-  type ResqueScheduledJobs,
-  type ResqueDelayedJob
-} from '@/api/resque-monitor-api'
+import resqueMonitorApi from '@/api/resque-monitor-api'
+import type {
+  ResqueStats,
+  ResqueQueue,
+  ResqueWorker,
+  ResqueFailedJob,
+  ResqueScheduledJobs,
+  ResqueDelayedJob
+} from '@/data/types/resque-types'
 import PageHeader from '@/views/layer/PageHeader.vue'
 
 const toast = useToast()
@@ -80,23 +67,23 @@ const subscribeToResqueMonitor = () => {
     {
       connected() {
         console.log('ResqueMonitor频道连接成功')
-        
+
         toast.add({
           severity: 'success',
           summary: 'Resque监控连接成功',
           detail: '实时监控已启用',
           life: 3000
         })
-        
+
         // 请求初始数据
         actionCableService.perform('ResqueMonitorChannel', 'subscribe', {
           tabs: ['stats', 'queues', 'workers', 'failed', 'scheduled', 'delayed']
         })
       },
-      
+
       disconnected() {
         console.log('ResqueMonitor频道连接断开')
-        
+
         toast.add({
           severity: 'warn',
           summary: 'Resque监控连接断开',
@@ -104,21 +91,21 @@ const subscribeToResqueMonitor = () => {
           life: 3000
         })
       },
-      
+
       rejected() {
         console.log('ResqueMonitor频道连接被拒绝')
-        
+
         toast.add({
           severity: 'error',
           summary: 'Resque监控连接被拒绝',
           detail: '请检查服务器配置',
           life: 5000
         })
-        
+
         // 回退到轮询模式
         fallbackToPolling()
       },
-      
+
       received(data: any) {
         handleActionCableMessage(data)
         lastUpdateTime.value = new Date()
@@ -201,7 +188,7 @@ const fallbackToPolling = () => {
 // 获取统计信息
 const fetchStats = async () => {
   try {
-    stats.value = await ApiGetResqueStats()
+    stats.value = await resqueMonitorApi.getStats()
   } catch (error) {
     console.error('获取统计信息失败:', error)
   }
@@ -210,7 +197,7 @@ const fetchStats = async () => {
 // 获取队列信息
 const fetchQueues = async () => {
   try {
-    queues.value = await ApiGetResqueQueues()
+    queues.value = await resqueMonitorApi.getQueues()
   } catch (error) {
     console.error('获取队列信息失败:', error)
   }
@@ -219,7 +206,7 @@ const fetchQueues = async () => {
 // 获取Worker信息
 const fetchWorkers = async () => {
   try {
-    workers.value = await ApiGetResqueWorkers()
+    workers.value = await resqueMonitorApi.getWorkers()
   } catch (error) {
     console.error('获取Worker信息失败:', error)
   }
@@ -228,7 +215,7 @@ const fetchWorkers = async () => {
 // 获取失败任务
 const fetchFailedJobs = async () => {
   try {
-    const response = await ApiGetResqueFailedJobs(0, 50)
+    const response = await resqueMonitorApi.getFailedJobs(0, 50)
     failedJobs.value = response.jobs
     failedJobsTotal.value = response.total
   } catch (error) {
@@ -239,7 +226,7 @@ const fetchFailedJobs = async () => {
 // 获取定时任务
 const fetchScheduledJobs = async () => {
   try {
-    scheduledJobs.value = await ApiGetResqueScheduledJobs()
+    scheduledJobs.value = await resqueMonitorApi.getScheduledJobs()
   } catch (error) {
     console.error('获取定时任务失败:', error)
   }
@@ -248,7 +235,7 @@ const fetchScheduledJobs = async () => {
 // 获取延迟任务
 const fetchDelayedJobs = async () => {
   try {
-    const response = await ApiGetResqueDelayedJobs(0, 20)
+    const response = await resqueMonitorApi.getDelayedJobs(0, 20)
     delayedJobs.value = response.jobs
     delayedJobsTotal.value = response.total
   } catch (error) {
@@ -277,7 +264,7 @@ const fetchAllData = async () => {
 // 重试失败任务
 const retryFailedJob = async (job: ResqueFailedJob, index: number) => {
   try {
-    await ApiRetryFailedJob(index)
+    await resqueMonitorApi.retryFailedJob(index)
     toast.add({
       severity: 'success',
       summary: '任务重试成功',
@@ -299,7 +286,7 @@ const retryFailedJob = async (job: ResqueFailedJob, index: number) => {
 // 清空所有失败任务
 const clearAllFailedJobs = async () => {
   try {
-    await ApiClearFailedJobs()
+    await resqueMonitorApi.clearFailedJobs()
     toast.add({
       severity: 'success',
       summary: '清空成功',
@@ -321,7 +308,7 @@ const clearAllFailedJobs = async () => {
 // 重新排队所有失败任务
 const requeueAllFailedJobs = async () => {
   try {
-    await ApiRequeueAllFailedJobs()
+    await resqueMonitorApi.requeueAllFailedJobs()
     toast.add({
       severity: 'success',
       summary: '重新排队成功',
@@ -343,7 +330,7 @@ const requeueAllFailedJobs = async () => {
 // 删除单个失败任务
 const removeFailedJob = async (job: ResqueFailedJob) => {
   try {
-    await ApiRemoveFailedJob(job.index)
+    await resqueMonitorApi.removeFailedJob(job.index)
     toast.add({
       severity: 'success',
       summary: '删除成功',
@@ -365,7 +352,7 @@ const removeFailedJob = async (job: ResqueFailedJob) => {
 // 清空所有延迟任务
 const clearAllDelayedJobs = async () => {
   try {
-    await ApiClearDelayedJobs()
+    await resqueMonitorApi.clearDelayedJobs()
     toast.add({
       severity: 'success',
       summary: '清空成功',
@@ -387,7 +374,7 @@ const clearAllDelayedJobs = async () => {
 // 清空队列
 const clearQueue = async (queueName: string) => {
   try {
-    await ApiClearQueue(queueName)
+    await resqueMonitorApi.clearQueue(queueName)
     toast.add({
       severity: 'success',
       summary: '队列清空成功',
@@ -409,7 +396,7 @@ const clearQueue = async (queueName: string) => {
 // 删除队列
 const removeQueue = async (queueName: string) => {
   try {
-    await ApiRemoveQueue(queueName)
+    await resqueMonitorApi.removeQueue(queueName)
     toast.add({
       severity: 'success',
       summary: '队列删除成功',
@@ -493,42 +480,42 @@ const manualRefresh = () => {
 const getConnectionStatusInfo = () => {
   if (!connectionState.value.connected) {
     if (connectionState.value.connecting) {
-      return { 
-        label: 'ActionCable连接中...', 
-        icon: 'pi-circle', 
+      return {
+        label: 'ActionCable连接中...',
+        icon: 'pi-circle',
         color: 'text-yellow-500 animate-pulse',
         description: '正在建立连接'
       }
     } else if (connectionState.value.error) {
-      return { 
-        label: 'ActionCable连接错误', 
-        icon: 'pi-circle', 
+      return {
+        label: 'ActionCable连接错误',
+        icon: 'pi-circle',
         color: 'text-red-500',
         description: connectionState.value.error
       }
     } else {
-      return { 
-        label: 'ActionCable已断开', 
-        icon: 'pi-circle', 
+      return {
+        label: 'ActionCable已断开',
+        icon: 'pi-circle',
         color: 'text-gray-500',
         description: '手动刷新模式'
       }
     }
   }
-  
+
   // ActionCable已连接，检查是否订阅了Resque监控
   if (subscription.value) {
-    return { 
-      label: 'Resque实时监控', 
-      icon: 'pi-circle', 
+    return {
+      label: 'Resque实时监控',
+      icon: 'pi-circle',
       color: 'text-green-500',
       description: '实时监控活跃'
     }
   } else {
-    return { 
-      label: 'ActionCable已连接', 
-      icon: 'pi-circle', 
-      color: 'text-blue-500',
+    return {
+      label: 'ActionCable已连接',
+      icon: 'pi-circle',
+      color: 'text-primary-500',
       description: '未订阅监控频道'
     }
   }
@@ -567,7 +554,7 @@ const removeDelayedJobGroup = async (delayedJob: ResqueDelayedJob) => {
 onMounted(() => {
   // 直接尝试订阅频道，ActionCable会在连接建立后自动连接频道
   subscribeToResqueMonitor()
-  
+
   // 如果1秒后还没有订阅成功，使用轮询模式获取初始数据
   setTimeout(() => {
     if (!subscription.value || !isConnected.value) {
@@ -590,7 +577,7 @@ onUnmounted(() => {
       title="Resque 监控面板"
       description="实时监控 Resque 队列系统状态和性能指标"
       icon="pi pi-server"
-      icon-color="text-blue-600"
+      icon-color="text-primary-600"
     >
       <template #actions>
         <!-- 连接控制 -->
@@ -621,7 +608,7 @@ onUnmounted(() => {
               <div class="text-gray-500 text-xs">{{ getConnectionStatusInfo().description }}</div>
             </div>
           </div>
-          
+
           <!-- 最后更新时间 -->
           <div v-if="lastUpdateTime" class="text-xs text-gray-500">
             <div>最后更新:</div>
@@ -663,9 +650,9 @@ onUnmounted(() => {
             <Card class="bg-blue-50 border-blue-200">
               <template #content>
                 <div class="text-center">
-                  <i class="pi pi-check-circle text-blue-600 text-2xl mb-2 block"></i>
-                  <div class="text-2xl font-bold text-blue-700">{{ stats.overview.processed }}</div>
-                  <div class="text-sm text-blue-600">已处理</div>
+                  <i class="pi pi-check-circle text-primary-600 text-2xl mb-2 block"></i>
+                  <div class="text-2xl font-bold text-primary-700">{{ stats.overview.processed }}</div>
+                  <div class="text-sm text-primary-600">已处理</div>
                 </div>
               </template>
             </Card>
@@ -994,7 +981,7 @@ onUnmounted(() => {
           <Card v-if="scheduledJobs.scheduler_info.supported">
             <template #title>
               <div class="flex items-center gap-2">
-                <i class="pi pi-clock text-blue-500"></i>
+                <i class="pi pi-clock text-primary-500"></i>
                 定时任务配置
               </div>
             </template>

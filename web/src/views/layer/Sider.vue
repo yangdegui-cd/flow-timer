@@ -14,25 +14,25 @@ const authStore = useAuthStore();
 // 导航菜单项
 const menuItems = [
   {
-    key: 'flows',
-    label: '流程管理',
-    icon: 'pi pi-sitemap',
-    path: '/flows',
-    tooltip: '流程设计和管理'
+    key: 'project-management',
+    label: '项目管理',
+    icon: 'pi pi-briefcase',
+    path: '/projects',
+    tooltip: '管理项目和用户分配'
   },
   {
-    key: 'tasks',
-    label: '任务管理',
-    icon: 'pi pi-clock',
-    path: '/tasks',
-    tooltip: '定时任务调度'
+    key: 'automation-logs',
+    label: '自动化日志',
+    icon: 'pi pi-history',
+    path: '/automation-logs',
+    tooltip: '查看自动化操作日志'
   },
   {
-    key: 'execution',
-    label: '执行记录',
-    icon: 'pi pi-play-circle',
-    path: '/execution',
-    tooltip: '任务执行历史'
+    key: 'ads-analytics',
+    label: '广告数据分析',
+    icon: 'pi pi-chart-line',
+    path: '/analytics/ads',
+    tooltip: '广告投放数据分析与洞察'
   },
   {
     key: 'resque-monitor',
@@ -40,20 +40,6 @@ const menuItems = [
     icon: 'pi pi-server',
     path: '/resque-monitor',
     tooltip: 'Resque任务监控'
-  },
-  {
-    key: 'metadata',
-    label: '元数据管理',
-    icon: 'pi pi-database',
-    path: '/metadata',
-    tooltip: '数据源和连接管理'
-  },
-  {
-    key: 'monitoring',
-    label: '监控面板',
-    icon: 'pi pi-chart-line',
-    path: '/monitoring',
-    tooltip: '系统监控和统计'
   }
 ];
 
@@ -83,9 +69,7 @@ const settingsItems = [
 const visibleAdminItems = computed(() => {
   return adminMenuItems.filter(item => {
     // 检查是否有任何管理权限
-    return authStore.hasPermission('manage_users') ||
-           authStore.hasPermission('manage_roles') ||
-           authStore.hasPermission('manage_system');
+    return authStore.isAdmin
   });
 });
 

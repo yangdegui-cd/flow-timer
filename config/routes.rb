@@ -26,7 +26,7 @@ Rails.application.routes.draw do
   get '/auth/failure', to: 'auth#oauth_failure'
 
   # 用户管理路由
-  resources :sys_users do
+  resources :sys_user do
     member do
       put :change_status
       put :assign_roles
@@ -39,96 +39,110 @@ Rails.application.routes.draw do
   end
 
   # 角色管理路由
-  resources :sys_roles do
+  resources :sys_role do
     member do
       put :update_permissions
+      get :permissions
+      put :assign_permissions
     end
     collection do
       get :available_permissions
     end
   end
 
-  # Defines the root path route ("/")
-  # root "posts#index"
-  resources :ft_flow do
+  # 权限管理路由
+  resources :sys_permission, except: [:new, :edit] do
     collection do
-      get :current_version
-      get :get_tree_list
-      get :statistics
-      patch :batch_update_status
-      delete :batch_delete
+      put :batch_status
+      get :modules
+      post :sync_system_permissions
     end
   end
 
-  resources :ft_task do
+  # 系统日志管理路由
+  resources :sys_logs, only: [:index, :show] do
     collection do
-      post :execute_batch
-      get :list_executable
-      post :activate
-      post :deactivate
-      post :execute_immediate
-    end
-    member do
-      post :execute
-      get :check_executable
-      get :execution_history
-    end
-  end
-
-  resources :catalog do
-    collection do
-      post :move_batch
-      patch :batch_sort
-    end
-    member do
-      patch :move
-    end
-  end
-
-  resources :space do
-    collection do
-      patch :batch_sort
-    end
-  end
-
-  # 任务执行记录相关路由
-  resources :ft_task_execution do
-    collection do
-      post :execute
-      post :batch_execute
+      get :my_logs
       get :stats
-      get :show_result
-    end
-    member do
-      post :cancel
-      post :retry_execution
+      post :cleanup
     end
   end
 
-  # 流程执行相关路由
-  resources :flows, controller: 'flow_execution', param: :flow_id do
+  # 项目管理路由
+  resources :projects do
     member do
-      post :execute
-      post :execute_async
-      get :status
-      post :stop
+      post :assign_users
     end
 
-    collection do
-      post :execute_batch
-      get :execution_history
-      get :execute_by_condition
+    # 项目下的自动化规则管理
+    resources :automation_rules, only: [:index, :create]
+
+    # 项目下的广告账户管理
+    resources :ads_accounts, except: [:new, :edit] do
+      member do
+        post :sync
+        post :refresh_token
+        patch :toggle
+        post :bind
+        delete :unbind
+      end
+      collection do
+        get :by_platform
+        get :available
+      end
+    end
+
+    # 项目下的自动化日志管理
+    resources :automation_logs, only: [:index] do
+      collection do
+        get :stats
+      end
     end
   end
 
-  # API 路由
-  resources :meta_datasource do
+  # 自动化日志详情（独立路由）
+  resources :automation_logs, only: [:show]
+
+  # 自动化规则管理（独立路由）
+  resources :automation_rules, only: [:show, :update, :destroy] do
+    member do
+      patch :toggle
+    end
+  end
+
+  # 广告平台路由
+  resources :ads_platforms, only: [:index, :show]
+
+  # Facebook授权路由
+  scope :facebook_auth do
+    post :authorize, to: 'facebook_auth#authorize'
+    get :callback, to: 'facebook_auth#callback'
+  end
+
+  # 其他平台授权路由 (预留)
+  scope :google_auth do
+    post :authorize, to: 'google_auth#authorize'
+    get :callback, to: 'google_auth#callback'
+  end
+
+  # 用户项目关联管理路由
+  resources :sys_user_projects, except: [:new, :edit] do
     collection do
-      get :test_connection
-      get :get_tables
-      get :get_databases
-      get :get_catalogs
-      get :get_schemas
+      get 'user_projects/:user_id', to: 'sys_user_projects#user_projects'
+      get 'project_users/:project_id', to: 'sys_user_projects#project_users'
+      post :bulk_assign
+    end
+  end
+
+  # API路由
+  namespace :api do
+    # 广告数据API
+    resources :ads_data, only: [:index, :show] do
+      collection do
+        get :stats
+        get :campaigns
+        get :accounts
+      end
     end
   end
 
@@ -153,5 +167,4 @@ Rails.application.routes.draw do
     delete :clear_delayed_jobs, to: 'resque_monitor#clear_delayed_jobs'
     delete 'delayed/:timestamp/:job_class', to: 'resque_monitor#remove_delayed_job'
   end
-
 end

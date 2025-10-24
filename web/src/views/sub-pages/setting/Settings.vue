@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { useToast } from "primevue/usetoast";
 import { useRouter } from 'vue-router';
 import PageHeader from '@/views/layer/PageHeader.vue';
+import { changePrimaryColor } from '@/utils/changePrimaryColor';
 
 const toast = useToast();
 const router = useRouter();
@@ -16,6 +17,7 @@ const systemSettings = ref({
   timezone: 'Asia/Shanghai',
   language: 'zh-CN',
   theme: 'light',
+  primaryColor: 'indigo',
   enableNotifications: true,
   enableEmailAlerts: true,
   logLevel: 'INFO',
@@ -96,6 +98,20 @@ const themeOptions = [
   { label: '跟随系统', value: 'auto' }
 ];
 
+const primaryColorOptions = [
+  { label: '靛蓝色', value: 'indigo', color: '#6366f1' },
+  { label: '蓝色', value: 'blue', color: '#3b82f6' },
+  { label: '紫色', value: 'purple', color: '#8b5cf6' },
+  { label: '粉色', value: 'pink', color: '#ec4899' },
+  { label: '红色', value: 'red', color: '#ef4444' },
+  { label: '橙色', value: 'orange', color: '#f97316' },
+  { label: '黄色', value: 'yellow', color: '#eab308' },
+  { label: '绿色', value: 'green', color: '#22c55e' },
+  { label: '青色', value: 'teal', color: '#14b8a6' },
+  { label: '天蓝色', value: 'sky', color: '#0ea5e9' },
+  { label: '灰色', value: 'slate', color: '#64748b' }
+];
+
 const logLevelOptions = [
   { label: 'DEBUG', value: 'DEBUG' },
   { label: 'INFO', value: 'INFO' },
@@ -115,11 +131,21 @@ const tabItems = [
   { label: '账号绑定', icon: 'pi pi-link', route: '/settings/account' }
 ];
 
+// 从localStorage加载设置
 const loadSettings = async () => {
   loading.value = true;
   try {
-    // 模拟加载设置
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // 从localStorage加载保存的设置
+    const savedSettings = localStorage.getItem('systemSettings');
+    if (savedSettings) {
+      const parsed = JSON.parse(savedSettings);
+      Object.assign(systemSettings.value, parsed);
+    }
+    
+    // 应用当前主题和颜色设置
+    applyTheme(systemSettings.value.theme);
+    changePrimaryColor(systemSettings.value.primaryColor);
+    
     toast.add({
       severity: 'success',
       summary: '设置加载',
@@ -141,8 +167,13 @@ const loadSettings = async () => {
 const saveSettings = async () => {
   saving.value = true;
   try {
-    // 模拟保存设置
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // 保存设置到localStorage
+    localStorage.setItem('systemSettings', JSON.stringify(systemSettings.value));
+    
+    // 应用主题和颜色设置
+    applyTheme(systemSettings.value.theme);
+    changePrimaryColor(systemSettings.value.primaryColor);
+    
     toast.add({
       severity: 'success',
       summary: '保存成功',
@@ -160,6 +191,45 @@ const saveSettings = async () => {
     saving.value = false;
   }
 };
+
+// 应用主题函数
+const applyTheme = (themeMode: string) => {
+  const html = document.documentElement;
+  
+  if (themeMode === 'dark') {
+    html.classList.add('dark');
+  } else if (themeMode === 'light') {
+    html.classList.remove('dark');
+  } else if (themeMode === 'auto') {
+    // 跟随系统
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if (prefersDark) {
+      html.classList.add('dark');
+    } else {
+      html.classList.remove('dark');
+    }
+  }
+};
+
+// 监听主题和颜色变化
+watch(() => systemSettings.value.theme, (newTheme) => {
+  applyTheme(newTheme);
+});
+
+watch(() => systemSettings.value.primaryColor, (newColor) => {
+  changePrimaryColor(newColor);
+});
+
+// 监听系统主题变化（仅在auto模式下）
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+  if (systemSettings.value.theme === 'auto') {
+    if (e.matches) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }
+});
 
 const testEmailConnection = async () => {
   try {
@@ -301,13 +371,56 @@ onMounted(() => {
                 </div>
 
                 <div>
-                  <label class="block text-sm font-medium mb-2">主题</label>
+                  <label class="block text-sm font-medium mb-2">主题模式</label>
                   <Dropdown
                     v-model="systemSettings.theme"
                     :options="themeOptions"
                     optionLabel="label"
                     optionValue="value"
                     class="w-full" />
+                </div>
+
+                <div class="col-span-2">
+                  <label class="block text-sm font-medium mb-3">主题颜色</label>
+                  <div class="flex flex-wrap gap-3">
+                    <div
+                      v-for="color in primaryColorOptions"
+                      :key="color.value"
+                      @click="systemSettings.primaryColor = color.value"
+                      :class="[
+                        'group relative flex flex-col items-center cursor-pointer transition-all duration-200',
+                        'hover:scale-110'
+                      ]"
+                    >
+                      <div
+                        :class="[
+                          'w-8 h-8 rounded-full border-2 transition-all duration-200',
+                          systemSettings.primaryColor === color.value 
+                            ? 'border-gray-800 shadow-lg scale-110' 
+                            : 'border-gray-300 hover:border-gray-500'
+                        ]"
+                        :style="{ backgroundColor: color.color }"
+                      >
+                        <!-- 选中状态的勾号 -->
+                        <div
+                          v-if="systemSettings.primaryColor === color.value"
+                          class="absolute inset-0 flex items-center justify-center"
+                        >
+                          <i class="pi pi-check text-white text-xs font-bold drop-shadow"></i>
+                        </div>
+                      </div>
+                      <span 
+                        :class="[
+                          'text-xs mt-1 transition-all duration-200',
+                          systemSettings.primaryColor === color.value 
+                            ? 'text-gray-800 font-medium' 
+                            : 'text-gray-600 group-hover:text-gray-800'
+                        ]"
+                      >
+                        {{ color.label }}
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
                 <div>

@@ -6,7 +6,7 @@
     class="w-full max-w-lg"
   >
     <div v-if="role" class="space-y-4">
-      <p class="text-surface-600">编辑角色: {{ role.display_name }}</p>
+      <p class="text-surface-600">编辑角色: {{ role.name }}</p>
 
       <form @submit.prevent="handleUpdate" class="space-y-4">
         <!-- 角色名称（不可编辑系统角色） -->
@@ -27,20 +27,6 @@
           <small v-else class="text-surface-500 text-xs mt-1">角色的唯一标识，只能包含字母、数字和下划线</small>
         </div>
 
-        <!-- 显示名称 -->
-        <div>
-          <FloatLabel variant="on">
-            <InputText
-              id="editDisplayName"
-              v-model="editForm.display_name"
-              class="w-full"
-              :class="{ 'p-invalid': errors.display_name }"
-              required
-            />
-            <label for="editDisplayName">显示名称*</label>
-          </FloatLabel>
-          <small v-if="errors.display_name" class="p-error">{{ errors.display_name }}</small>
-        </div>
 
         <!-- 描述 -->
         <div>
@@ -60,8 +46,8 @@
         <!-- 系统角色提示 -->
         <div v-if="role.system_role" class="p-3 bg-blue-50 border border-blue-200 rounded-lg">
           <div class="flex items-center space-x-2">
-            <i class="pi pi-info-circle text-blue-600"></i>
-            <span class="text-blue-700 text-sm">
+            <i class="pi pi-info-circle text-primary-600"></i>
+            <span class="text-primary-700 text-sm">
               系统角色的权限配置请使用"编辑权限"功能
             </span>
           </div>
@@ -89,7 +75,9 @@
 <script setup lang="ts">
 import { ref, reactive, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
-import RoleApi, { type Role } from '@/api/role-api'
+import roleApi from '@/api/role-api'
+import type { Role } from '@/data/types/user-types'
+import type { UpdateRoleRequest } from '@/data/types/role-types'
 
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
@@ -112,9 +100,8 @@ const toast = useToast()
 
 // Data
 const loading = ref(false)
-const editForm = reactive({
+const editForm = reactive<UpdateRoleRequest>({
   name: '',
-  display_name: '',
   description: ''
 })
 
@@ -130,9 +117,7 @@ const validateForm = () => {
     errors.value.name = '角色名称只能包含字母、数字和下划线'
   }
 
-  if (!editForm.display_name.trim()) {
-    errors.value.display_name = '显示名称不能为空'
-  }
+  // display_name validation removed as it's not in the new API structure
 
   return Object.keys(errors.value).length === 0
 }
@@ -143,19 +128,17 @@ const handleUpdate = async () => {
   loading.value = true
 
   try {
-    const response = await RoleApi.update(props.role.id, editForm)
+    const response = await roleApi.update(props.role.id, editForm)
 
-    if (response.code === 200) {
-      toast.add({
-        severity: 'success',
-        summary: '更新成功',
-        detail: response.data.message,
-        life: 3000
-      })
+    toast.add({
+      severity: 'success',
+      summary: '更新成功',
+      detail: response.message || '角色更新成功',
+      life: 3000
+    })
 
-      visible.value = false
-      emit('success')
-    }
+    visible.value = false
+    emit('success')
   } catch (error: any) {
     toast.add({
       severity: 'error',
@@ -172,7 +155,6 @@ const handleUpdate = async () => {
 watch(() => props.role, (newRole) => {
   if (newRole) {
     editForm.name = newRole.name
-    editForm.display_name = newRole.display_name
     editForm.description = newRole.description || ''
     errors.value = {}
   }

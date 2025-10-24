@@ -25,6 +25,9 @@ gem "resque-scheduler", "~> 4.10.2"
 gem "net-sftp", "~> 4.0"
 gem "rubyzip", "~> 2.3"
 
+# Tencent Cloud COS support (using AWS S3 compatible approach)
+gem "aws-sdk-s3", "~> 1.0"
+
 # Use Kredis to get higher-level data types in Redis [https://github.com/rails/kredis]
 # gem "kredis"
 
@@ -37,6 +40,9 @@ gem "omniauth-rails_csrf_protection", "~> 1.0"
 gem "omniauth-wechat-oauth2", "~> 0.1"
 gem "cancancan", "~> 3.5"
 gem "kaminari", "~> 1.2"
+
+# HTTP client for API requests
+gem "httparty", "~> 0.21"
 
 # Database adapters using Sequel
 gem "sequel", "~> 5.75"

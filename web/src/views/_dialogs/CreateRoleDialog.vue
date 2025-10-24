@@ -22,20 +22,6 @@
         <small class="text-surface-500 text-xs mt-1">角色的唯一标识，只能包含字母、数字和下划线</small>
       </div>
 
-      <!-- 显示名称 -->
-      <div>
-        <FloatLabel variant="on">
-          <InputText
-            id="displayName"
-            v-model="form.display_name"
-            class="w-full"
-            :class="{ 'p-invalid': errors.display_name }"
-            required
-          />
-          <label for="displayName">显示名称*</label>
-        </FloatLabel>
-        <small v-if="errors.display_name" class="p-error">{{ errors.display_name }}</small>
-      </div>
 
       <!-- 描述 -->
       <div>
@@ -103,7 +89,8 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { useToast } from 'primevue/usetoast'
-import RoleApi from '@/api/role-api'
+import roleApi from '@/api/role-api'
+import type { CreateRoleRequest } from '@/data/types/role-types'
 
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
@@ -124,11 +111,10 @@ const toast = useToast()
 
 // Data
 const loading = ref(false)
-const form = reactive({
+const form = reactive<CreateRoleRequest>({
   name: '',
-  display_name: '',
   description: '',
-  permissions: [] as string[]
+  permissions: []
 })
 
 const errors = ref<Record<string, string>>({})
@@ -173,9 +159,7 @@ const validateForm = () => {
     errors.value.name = '角色名称只能包含字母、数字和下划线'
   }
 
-  if (!form.display_name.trim()) {
-    errors.value.display_name = '显示名称不能为空'
-  }
+  // display_name validation removed as it's not in the new API structure
 
   if (form.permissions.length === 0) {
     errors.value.permissions = '请至少选择一个权限'
@@ -190,31 +174,25 @@ const handleCreate = async () => {
   loading.value = true
 
   try {
-    const response = await RoleApi.create({
-      ...form,
-      system_role: false
+    const response = await roleApi.create(form)
+
+    toast.add({
+      severity: 'success',
+      summary: '创建成功',
+      detail: response.message || '角色创建成功',
+      life: 3000
     })
 
-    if (response.code === 200) {
-      toast.add({
-        severity: 'success',
-        summary: '创建成功',
-        detail: response.data.message,
-        life: 3000
-      })
-
-      // 重置表单
-      Object.assign(form, {
-        name: '',
-        display_name: '',
-        description: '',
-        permissions: []
-      })
+    // 重置表单
+    Object.assign(form, {
+      name: '',
+      description: '',
+      permissions: []
+    })
       errors.value = {}
 
-      visible.value = false
-      emit('success')
-    }
+    visible.value = false
+    emit('success')
   } catch (error: any) {
     toast.add({
       severity: 'error',

@@ -153,11 +153,11 @@
 
     <!-- 配置摘要 -->
     <div v-if="isConfigured" class="bg-blue-50 border border-blue-200 rounded-lg p-3">
-      <h4 class="font-medium text-blue-900 mb-2 flex items-center gap-2">
+      <h4 class="font-medium text-primary-900 mb-2 flex items-center gap-2">
         <i class="pi pi-info-circle"></i>
         当前配置
       </h4>
-      <div class="text-sm text-blue-800 space-y-1">
+      <div class="text-sm text-primary-800 space-y-1">
         <div v-if="connectionType === 'metadata'">
           <span class="font-medium">元数据连接:</span> {{ selectedDatasource?.name }}
         </div>

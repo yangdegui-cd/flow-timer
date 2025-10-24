@@ -6,7 +6,7 @@ module Result
   end
 
   def not_login
-    { code: 301, msg: "请先登录" }
+    { code: 401, msg: "请先登录" }
   end
 
   def overdue_code

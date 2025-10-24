@@ -2,7 +2,7 @@ import axios from 'axios'
 import router from "@/router";
 
 // @ts-ignore
-const baseURL = import.meta.env.VITE_BASE_API || 'http://localhost:3000'
+const baseURL = import.meta.env.VITE_BASE_API || '/dev'
 
 const service = axios.create({
   baseURL, // api 的 base_url
@@ -36,6 +36,7 @@ service.interceptors.request.use(
 service.interceptors.response.use(
   response => {
     const responseStatus = response.data
+    // 如果响应有包装结构且有错误码
     if (responseStatus.code && responseStatus.code !== 200) {
       if (responseStatus.code === 401) {
         // Token过期或无效，清除token并跳转到登录页
@@ -44,9 +45,12 @@ service.interceptors.response.use(
       } else {
         return Promise.reject(responseStatus)
       }
-    } else {
-      // 直接返回data数据
+    } else if (responseStatus.code && responseStatus.data) {
+      // 有包装结构，返回data
       return Promise.resolve(responseStatus.data)
+    } else {
+      // 直接返回原始数据（Rails API的情况）
+      return Promise.resolve(responseStatus)
     }
   },
   err => {

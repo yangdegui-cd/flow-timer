@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import AuthApi, { User } from '@/api/auth-api'
+import authApi from '@/api/auth-api'
+import type { User } from '@/data/types/auth'
 
 export const useAuthStore = defineStore('auth', () => {
   // State
@@ -14,7 +15,7 @@ export const useAuthStore = defineStore('auth', () => {
     return user.value?.roles.some(role => role.name === roleName) || false
   })
   const hasPermission = computed(() => (permission: string) => {
-    return user.value?.permissions.includes(permission) || false
+    return user.value?.permissions.map(v => v.code).includes(permission) || false
   })
   const isAdmin = computed(() => hasRole.value('admin'))
 
@@ -22,7 +23,7 @@ export const useAuthStore = defineStore('auth', () => {
   async function login(email: string, password: string) {
     try {
       loading.value = true
-      const data = await AuthApi.login({ email, password })
+      const data = await authApi.login({ email, password })
       token.value = data.token
       user.value = data.user
       localStorage.setItem('auth_token', data.token)
@@ -37,7 +38,7 @@ export const useAuthStore = defineStore('auth', () => {
   async function register(email: string, password: string, name: string) {
     try {
       loading.value = true
-      const data = await AuthApi.register({ email, password, name })
+      const data = await authApi.register({ email, password, name })
       token.value = data.token
       user.value = data.user
       localStorage.setItem('auth_token', data.token)
@@ -52,7 +53,7 @@ export const useAuthStore = defineStore('auth', () => {
   async function logout() {
     try {
       if (token.value) {
-        await AuthApi.logout()
+        await authApi.logout()
       }
     } catch (error) {
       console.error('Logout error:', error)
@@ -67,7 +68,7 @@ export const useAuthStore = defineStore('auth', () => {
     if (!token.value) return false
 
     try {
-      const data = await AuthApi.me()
+      const data = await authApi.me()
       user.value = data.sys_user
       return true
     } catch (error) {
@@ -78,9 +79,9 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function updateProfile(data: { name: string; avatar_url?: string }) {
     try {
-      const data = await AuthApi.updateProfile(data)
-      user.value = data.user
-      return { success: true, message: response.data.message }
+      const response = await authApi.updateProfile(data)
+      user.value = response.user
+      return { success: true, message: response.message }
     } catch (error: any) {
       return { success: false, message: error.msg || '更新失败' }
     }
@@ -88,7 +89,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function changePassword(currentPassword: string, newPassword: string) {
     try {
-      await AuthApi.changePassword({
+      await authApi.changePassword({
         current_password: currentPassword,
         new_password: newPassword
       })

@@ -118,7 +118,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
-import UserApi, { type CreateUserRequest } from '@/api/user-api'
+import , { type CreateUserRequest } from '@/api/user-api'
 import type { Role } from '@/api/user-api'
 
 import Dialog from 'primevue/dialog'
@@ -207,7 +207,7 @@ const validatePassword = () => {
 // Methods
 const loadRoles = async () => {
   try {
-    const response = await UserApi.getRoles()
+    const response = await .getRoles()
     if (response.code === 200) {
       availableRoles.value = response.data.roles
     }
@@ -234,7 +234,7 @@ const handleSubmit = async () => {
       roles: form.roles.length > 0 ? form.roles : ['viewer'] // 默认分配viewer角色
     }
 
-    const response = await UserApi.create(data)
+    const response = await .create(data)
 
     if (response.code === 200) {
       toast.add({

@@ -54,7 +54,7 @@ const router = createRouter({
     {
       path: "/",
       name: 'home',
-      redirect: '/flows',
+      redirect: '/resque-monitor',
       component: () => import('@/views/layer/Layout.vue'),
       children: [
         {
@@ -86,70 +86,36 @@ const router = createRouter({
             requiresAuth: true
           }
         },
-        // 流程管理相关路由
+        // 项目管理
         {
-          path: '/flows',
-          name: 'flows',
-          component: () => import('@/views/sub-pages/flow/Flow.vue'),
+          path: '/projects',
+          name: 'project-management',
+          component: () => import('@/views/sub-pages/project/ProjectManagement.vue'),
           meta: {
-            title: '流程管理',
-            icon: 'pi pi-sitemap'
+            title: '项目管理',
+            icon: 'pi pi-briefcase',
+            requiresAuth: true
           }
         },
+        // 项目详情
         {
-          path: '/flows/add',
-          name: 'flows-add',
-          component: () => import('@/views/sub-pages/flow/Edit.vue'),
+          path: '/project/:id',
+          name: 'project-detail',
+          component: () => import('@/views/sub-pages/project/ProjectDetailPage.vue'),
           meta: {
-            title: '新增流程',
-            parent: 'flows'
+            title: '项目详情',
+            requiresAuth: true
           }
         },
+        // 自动化日志
         {
-          path: "/flows/edit",
-          name: 'flows-edit',
-          component: () => import('@/views/sub-pages/flow/Edit.vue'),
+          path: '/automation-logs',
+          name: 'automation-logs',
+          component: () => import('@/views/sub-pages/logs/AutomationLogsPage.vue'),
           meta: {
-            title: '编辑流程',
-            parent: 'flows'
-          }
-        },
-        // 任务管理相关路由
-        {
-          path: '/tasks',
-          name: 'tasks',
-          component: () => import('@/views/sub-pages/task/Task.vue'),
-          meta: {
-            title: '任务管理',
-            icon: 'pi pi-clock'
-          }
-        },
-        {
-          path: '/task/add',
-          name: 'task-add',
-          component: () => import('@/views/sub-pages/task/Edit.vue'),
-          meta: {
-            title: '新增任务',
-            parent: 'tasks'
-          }
-        },
-        {
-          path: '/task/edit',
-          name: 'task-edit',
-          component: () => import('@/views/sub-pages/task/Edit.vue'),
-          meta: {
-            title: '编辑任务',
-            parent: 'tasks'
-          }
-        },
-        // 执行记录
-        {
-          path: '/execution',
-          name: 'execution',
-          component: () => import('@/views/sub-pages/execution/Execution.vue'),
-          meta: {
-            title: '执行记录',
-            icon: 'pi pi-play-circle'
+            title: '自动化日志',
+            icon: 'pi pi-history',
+            requiresAuth: true
           }
         },
         // 任务监控
@@ -160,71 +126,6 @@ const router = createRouter({
           meta: {
             title: '任务监控',
             icon: 'pi pi-server'
-          }
-        },
-        // 元数据管理相关路由
-        {
-          path: '/metadata',
-          name: 'metadata',
-          component: () => import('@/views/sub-pages/metadata/Metadata.vue'),
-          meta: {
-            title: '元数据管理',
-            icon: 'pi pi-database'
-          }
-        },
-        {
-          path: '/metadata/hosts',
-          name: 'metadata-hosts',
-          component: () => import('@/views/sub-pages/metadata/HostList.vue'),
-          meta: {
-            title: '主机管理',
-            parent: 'metadata'
-          }
-        },
-        {
-          path: '/metadata/mysql',
-          name: 'metadata-mysql',
-          component: () => import('@/views/sub-pages/metadata/MysqlList.vue'),
-          meta: {
-            title: 'MySQL管理',
-            parent: 'metadata'
-          }
-        },
-        {
-          path: '/metadata/trino',
-          name: 'metadata-trino',
-          component: () => import('@/views/sub-pages/metadata/TrinoList.vue'),
-          meta: {
-            title: 'Trino管理',
-            parent: 'metadata'
-          }
-        },
-        {
-          path: '/metadata/hdfs',
-          name: 'metadata-hdfs',
-          component: () => import('@/views/sub-pages/metadata/HdfsList.vue'),
-          meta: {
-            title: 'HDFS管理',
-            parent: 'metadata'
-          }
-        },
-        {
-          path: '/metadata/databases',
-          name: 'metadata-databases',
-          component: () => import('@/views/sub-pages/metadata/DatasourceList.vue'),
-          meta: {
-            title: 'SQL数据库源',
-            parent: 'metadata'
-          }
-        },
-        // 监控面板
-        {
-          path: '/monitoring',
-          name: 'monitoring',
-          component: () => import('@/views/sub-pages/monitoring/Monitoring.vue'),
-          meta: {
-            title: '监控面板',
-            icon: 'pi pi-chart-line'
           }
         },
         // 系统设置
@@ -245,6 +146,17 @@ const router = createRouter({
           meta: {
             title: '账号绑定',
             parent: 'settings',
+            requiresAuth: true
+          }
+        },
+        // 广告数据分析
+        {
+          path: '/analytics/ads',
+          name: 'ads-analytics',
+          component: () => import('@/views/sub-pages/analytics/AdsAnalytics.vue'),
+          meta: {
+            title: '广告数据分析',
+            icon: 'pi pi-chart-line',
             requiresAuth: true
           }
         },
@@ -294,10 +206,7 @@ router.beforeEach(async (to, from, next) => {
 
   // 特殊检查：系统管理页面需要任一管理权限
   if (to.name === 'admin-management' && authStore.isAuthenticated) {
-    const hasAnyAdminPermission = authStore.hasPermission('manage_users') ||
-      authStore.hasPermission('manage_roles') ||
-      authStore.hasPermission('manage_system')
-    if (!hasAnyAdminPermission) {
+    if (!authStore.isAdmin) {
       next('/')
       return
     }

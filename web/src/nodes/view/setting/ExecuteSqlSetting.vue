@@ -402,7 +402,7 @@ watch(config, () => {
               <!-- 预检结果 -->
               <div v-if="precheckResult">
                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div class="flex items-start gap-2 text-blue-800">
+                  <div class="flex items-start gap-2 text-primary-800">
                     <i class="pi pi-info-circle mt-0.5"></i>
                     <div class="flex-1">
                       <div class="font-medium mb-1">{{ precheckResult.message }}</div>

@@ -1,0 +1,29 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  name: MyString
+  account_id: MyString
+  ads_platform: one
+  project: one
+  access_token: MyText
+  refresh_token: MyText
+  expires_at: 2025-09-25 17:36:42
+  currency: MyString
+  timezone: MyString
+  account_status: MyString
+  active: false
+  last_sync_at: 2025-09-25 17:36:42
+
+two:
+  name: MyString
+  account_id: MyString
+  ads_platform: two
+  project: two
+  access_token: MyText
+  refresh_token: MyText
+  expires_at: 2025-09-25 17:36:42
+  currency: MyString
+  timezone: MyString
+  account_status: MyString
+  active: false
+  last_sync_at: 2025-09-25 17:36:42

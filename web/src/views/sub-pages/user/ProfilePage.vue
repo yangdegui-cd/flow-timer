@@ -1,5 +1,5 @@
 <template>
-  <sub-page title="个人资料" description="管理您的账户信息和安全设置" icon="pi pi-user" icon-color="text-blue-600">
+  <sub-page title="个人资料" description="管理您的账户信息和安全设置" icon="pi pi-user" icon-color="text-primary-600">
     <div class="profile-page w-full h-full overflow-auto">
       <div class="max-w-4xl mx-auto">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full overflow-hidden">
@@ -263,7 +263,8 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { useAuthStore } from '@/stores/auth'
-import AuthApi from '@/api/auth-api'
+import authApi from '@/api/auth-api'
+import oauthApi from '@/api/oauth-api'
 
 import Card from 'primevue/card'
 import Avatar from 'primevue/avatar'
@@ -416,13 +417,16 @@ const changePassword = async () => {
   passwordLoading.value = true
 
   try {
-    const response = await AuthApi.changePassword(passwordForm)
+    const result = await authStore.changePassword(
+      passwordForm.current_password,
+      passwordForm.new_password
+    )
 
-    if (response.code === 200) {
+    if (result.success) {
       toast.add({
         severity: 'success',
         summary: '密码修改成功',
-        detail: response.data.message,
+        detail: '密码已成功修改',
         life: 3000
       })
 
@@ -480,13 +484,13 @@ const bindOAuth = (provider: string) => {
 
 const unbindOAuth = async (provider: string) => {
   try {
-    const response = await AuthApi.unbindOAuth(provider)
+    const response = await oauthApi.unbind(provider)
 
-    if (response.code === 200) {
+    if (response.success) {
       toast.add({
         severity: 'success',
         summary: '解除绑定成功',
-        detail: response.data.message,
+        detail: response.message || '账号绑定已解除',
         life: 3000
       })
 

@@ -137,7 +137,7 @@ onMounted(() => {
       title="账号绑定"
       description="管理第三方账号绑定，支持多种登录方式"
       icon="pi pi-link"
-      icon-color="text-blue-600"
+      icon-color="text-primary-600"
     >
       <template #actions>
         <Button
@@ -157,10 +157,10 @@ onMounted(() => {
         <!-- 账号绑定说明 -->
         <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
           <div class="flex items-start gap-3">
-            <i class="pi pi-info-circle text-blue-600 text-lg mt-0.5"></i>
+            <i class="pi pi-info-circle text-primary-600 text-lg mt-0.5"></i>
             <div>
-              <h3 class="font-semibold text-blue-900 mb-1">账号绑定说明</h3>
-              <p class="text-sm text-blue-800">
+              <h3 class="font-semibold text-primary-900 mb-1">账号绑定说明</h3>
+              <p class="text-sm text-primary-800">
                 绑定第三方账号后，您可以使用多种方式登录系统。绑定的账号信息仅用于身份验证，不会获取您的私人数据。
               </p>
             </div>

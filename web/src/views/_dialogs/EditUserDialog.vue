@@ -55,7 +55,7 @@
 <script setup lang="ts">
 import { ref, reactive, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
-import UserApi from '@/api/user-api'
+import  from '@/api/user-api'
 import type { User } from '@/api/auth-api'
 
 import Dialog from 'primevue/dialog'
@@ -97,7 +97,7 @@ const handleUpdate = async () => {
   loading.value = true
 
   try {
-    const response = await UserApi.update(props.user.id, editForm)
+    const response = await .update(props.user.id, editForm)
 
     if (response.code === 200) {
       toast.add({

@@ -38,7 +38,7 @@ const titleSize = computed(() => {
 const iconSize = computed(() => {
   switch (props.size) {
     case 'small': return 'text-base'
-    case 'large': return 'text-2xl'  
+    case 'large': return 'text-2xl'
     default: return 'text-xl'
   }
 })
@@ -65,7 +65,7 @@ const handleBack = () => {
           v-tooltip.bottom="backLabel"
           @click="handleBack"
         />
-        
+
         <!-- 标题和描述 -->
         <div>
           <h1 :class="['font-bold text-gray-900 flex items-center gap-3', titleSize]">

@@ -39,6 +39,12 @@
     <orderEntry type="library" scope="PROVIDED" name="activerecord (v7.1.5, RVM: ruby-3.0.0) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="activestorage (v7.1.5, RVM: ruby-3.0.0) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="activesupport (v7.1.5, RVM: ruby-3.0.0) [gem]" level="application" />
+    <orderEntry type="library" scope="PROVIDED" name="aws-eventstream (v1.2.0, RVM: ruby-3.0.0) [gem]" level="application" />
+    <orderEntry type="library" scope="PROVIDED" name="aws-partitions (v1.655.0, RVM: ruby-3.0.0) [gem]" level="application" />
+    <orderEntry type="library" scope="PROVIDED" name="aws-sdk-core (v3.166.0, RVM: ruby-3.0.0) [gem]" level="application" />
+    <orderEntry type="library" scope="PROVIDED" name="aws-sdk-kms (v1.59.0, RVM: ruby-3.0.0) [gem]" level="application" />
+    <orderEntry type="library" scope="PROVIDED" name="aws-sdk-s3 (v1.117.1, RVM: ruby-3.0.0) [gem]" level="application" />
+    <orderEntry type="library" scope="PROVIDED" name="aws-sigv4 (v1.5.2, RVM: ruby-3.0.0) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="base64 (v0.2.0, RVM: ruby-3.0.0) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="bcrypt (v3.1.20, RVM: ruby-3.0.0) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="benchmark (v0.4.0, RVM: ruby-3.0.0) [gem]" level="application" />
@@ -50,6 +56,7 @@
     <orderEntry type="library" scope="PROVIDED" name="concurrent-ruby (v1.3.5, RVM: ruby-3.0.0) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="connection_pool (v2.4.1, RVM: ruby-3.0.0) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="crass (v1.0.6, RVM: ruby-3.0.0) [gem]" level="application" />
+    <orderEntry type="library" scope="PROVIDED" name="csv (v3.3.5, RVM: ruby-3.0.0) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="date (v3.4.0, RVM: ruby-3.0.0) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="debug (v1.9.2, RVM: ruby-3.0.0) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="dotenv (v3.1.8, RVM: ruby-3.0.0) [gem]" level="application" />
@@ -64,9 +71,11 @@
     <orderEntry type="library" scope="PROVIDED" name="fugit (v1.11.1, RVM: ruby-3.0.0) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="globalid (v1.2.1, RVM: ruby-3.0.0) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="hashie (v5.0.0, RVM: ruby-3.0.0) [gem]" level="application" />
+    <orderEntry type="library" scope="PROVIDED" name="httparty (v0.23.1, RVM: ruby-3.0.0) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="i18n (v1.14.6, RVM: ruby-3.0.0) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="io-console (v0.7.2, RVM: ruby-3.0.0) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="irb (v1.14.1, RVM: ruby-3.0.0) [gem]" level="application" />
+    <orderEntry type="library" scope="PROVIDED" name="jmespath (v1.6.1, RVM: ruby-3.0.0) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="json (v2.13.2, RVM: ruby-3.0.0) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="jwt (v2.10.2, RVM: ruby-3.0.0) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="kaminari (v1.2.2, RVM: ruby-3.0.0) [gem]" level="application" />
@@ -318,6 +327,10 @@
     <entry key="public/stylesheets">
       <value>file://$MODULE_DIR$/public/stylesheets</value>
     </entry>
+    <entry key="test/mailers/previews">
+      <value>file://$MODULE_DIR$/test/mailers/previews</value>
+      <value>file://$MODULE_DIR$/test/mailers/previews</value>
+    </entry>
     <entry key="tmp">
       <value>file://$MODULE_DIR$/tmp</value>
     </entry>
@@ -487,14 +500,27 @@
               <RakeTaskImpl description="" fullCommand="db:truncate_all" id="truncate_all" />
             </subtasks>
           </RakeTaskImpl>
-          <RakeTaskImpl id="flow">
+          <RakeTaskImpl id="facebook">
             <subtasks>
-              <RakeTaskImpl description="清理执行历史" fullCommand="flow:clean_history" id="clean_history" />
-              <RakeTaskImpl description="执行指定的流程" fullCommand="flow:execute[flow_id]" id="execute[flow_id]" />
-              <RakeTaskImpl description="批量执行所有draft状态的流程" fullCommand="flow:execute_all_draft" id="execute_all_draft" />
-              <RakeTaskImpl description="列出所有可执行的流程" fullCommand="flow:list" id="list" />
-              <RakeTaskImpl description="测试流程执行引擎" fullCommand="flow:test" id="test" />
-              <RakeTaskImpl description="" fullCommand="flow:execute" id="execute" />
+              <RakeTaskImpl description="清理过期的Facebook广告数据" fullCommand="facebook:cleanup_old_data[days]" id="cleanup_old_data[days]" />
+              <RakeTaskImpl description="同步指定Facebook广告账户的数据" fullCommand="facebook:sync_account[account_id]" id="sync_account[account_id]" />
+              <RakeTaskImpl description="同步所有Facebook广告账户的数据" fullCommand="facebook:sync_all" id="sync_all" />
+              <RakeTaskImpl description="同步Facebook数据包含细分维度" fullCommand="facebook:sync_with_breakdowns" id="sync_with_breakdowns" />
+              <RakeTaskImpl description="测试Facebook API不同breakdown组合" fullCommand="facebook:test_breakdowns" id="test_breakdowns" />
+              <RakeTaskImpl description="验证Facebook API访问令牌" fullCommand="facebook:validate_tokens" id="validate_tokens" />
+              <RakeTaskImpl description="" fullCommand="facebook:cleanup_old_data" id="cleanup_old_data" />
+              <RakeTaskImpl description="" fullCommand="facebook:sync_account" id="sync_account" />
+            </subtasks>
+          </RakeTaskImpl>
+          <RakeTaskImpl id="facebook_resque">
+            <subtasks>
+              <RakeTaskImpl description="手动执行Facebook数据清理" fullCommand="facebook_resque:cleanup_now[days]" id="cleanup_now[days]" />
+              <RakeTaskImpl description="清理所有Facebook相关队列" fullCommand="facebook_resque:clear_queues" id="clear_queues" />
+              <RakeTaskImpl description="手动执行Facebook数据同步" fullCommand="facebook_resque:sync_now[account_id]" id="sync_now[account_id]" />
+              <RakeTaskImpl description="测试Facebook Resque任务" fullCommand="facebook_resque:test" id="test" />
+              <RakeTaskImpl description="手动验证Facebook令牌" fullCommand="facebook_resque:validate_tokens_now" id="validate_tokens_now" />
+              <RakeTaskImpl description="" fullCommand="facebook_resque:cleanup_now" id="cleanup_now" />
+              <RakeTaskImpl description="" fullCommand="facebook_resque:sync_now" id="sync_now" />
             </subtasks>
           </RakeTaskImpl>
           <RakeTaskImpl id="log">
@@ -502,22 +528,27 @@
               <RakeTaskImpl description="Truncate all/specified *.log files in log/ to zero bytes (specify which logs with LOGS=test,development)" fullCommand="log:clear" id="clear" />
             </subtasks>
           </RakeTaskImpl>
+          <RakeTaskImpl id="permissions">
+            <subtasks>
+              <RakeTaskImpl description="清理未使用的权限" fullCommand="permissions:cleanup" id="cleanup" />
+              <RakeTaskImpl description="重建系统角色权限" fullCommand="permissions:rebuild_roles" id="rebuild_roles" />
+              <RakeTaskImpl description="显示权限统计信息" fullCommand="permissions:stats" id="stats" />
+              <RakeTaskImpl description="同步所有权限 (基于路由和基础权限)" fullCommand="permissions:sync" id="sync" />
+              <RakeTaskImpl description="验证权限系统完整性" fullCommand="permissions:validate" id="validate" />
+            </subtasks>
+          </RakeTaskImpl>
           <RakeTaskImpl id="resque">
             <subtasks>
-              <RakeTaskImpl description="Clear all resque queues" fullCommand="resque:clear" id="clear" />
               <RakeTaskImpl id="failures">
                 <subtasks>
                   <RakeTaskImpl description="Sort the 'failed' queue for the redis_multi_queue failure backend" fullCommand="resque:failures:sort" id="sort" />
                 </subtasks>
               </RakeTaskImpl>
-              <RakeTaskImpl description="Process all jobs in the queue" fullCommand="resque:process_all" id="process_all" />
-              <RakeTaskImpl description="Reset all failed jobs" fullCommand="resque:reset_failed" id="reset_failed" />
-              <RakeTaskImpl description="Start the resque scheduler" fullCommand="resque:scheduler" id="scheduler" />
-              <RakeTaskImpl description="Show resque stats" fullCommand="resque:stats" id="stats" />
-              <RakeTaskImpl description="Start resque web interface" fullCommand="resque:web" id="web" />
-              <RakeTaskImpl description="Start a Resque worker / Start a resque worker" fullCommand="resque:work" id="work" />
+              <RakeTaskImpl description="Start Resque Scheduler" fullCommand="resque:scheduler" id="scheduler" />
+              <RakeTaskImpl description="Start a Resque worker" fullCommand="resque:work" id="work" />
               <RakeTaskImpl description="Start multiple Resque workers" fullCommand="resque:workers" id="workers" />
               <RakeTaskImpl description="" fullCommand="resque:preload" id="preload" />
+              <RakeTaskImpl description="" fullCommand="resque:scheduler_setup" id="scheduler_setup" />
               <RakeTaskImpl description="" fullCommand="resque:setup" id="setup" />
             </subtasks>
           </RakeTaskImpl>

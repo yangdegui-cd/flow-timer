@@ -23,14 +23,6 @@ src/
 │   ├── types/              # TypeScript 类型定义
 │   └── defaults/           # 默认数据对象
 ├── router/                 # 路由配置
-├── nodes/                  # 节点相关
-│   ├── setting/            # 各种节点设置
-│   ├── view/               # 节点相关的vue组件
-│   │    ├──setting/        # 节点设置的vue组件
-│   │    ├──NodesMenu.vue   # 节点菜单VUE组件
-│   │    └──CommonNode.vue  # 通用节点VUE组件
-│   ├── nodes-menu.ts       # 节点菜单配置
-│   ├── nodes-setting.ts    # 节点设置配置
 ├── stores/                 # Pinia 状态管理
 ├── styles/                 # 全局样式
 ├── utils/                  # 工具函数
@@ -77,7 +69,7 @@ src/
 - FloatLabel 组件必须添加 `variant="on"` 属性
 - 所有支持 `size` 属性的组件优先使用 `size="small"`，根据页面布局紧凑性决定
 - Button 组件统一使用 `size="small"` 保持界面一致性
-
+- 
 ### 3. API 调用规范
 - 所有后端 API 接口统一放在 `@/api/` 目录下
 - 不在页面组件中直接写 API 调用逻辑
@@ -106,6 +98,12 @@ ApiList("ft_flow").then(data => {
   - operator: 操作员，可执行任务和查看监控
   - viewer: 查看者，只能查看数据
 - **权限控制**: JSON 格式存储，支持细粒度权限配置
+
+### 6. 关于弹出框
+
+- 大部分的功能都有创建和编辑的功能. 这两个弹出框需要合并. 因为编辑内容大致是相同的.
+- 弹出框的Vue需要单独提出到 /src/views/_dialogs
+
 
 ## 开发指南
 

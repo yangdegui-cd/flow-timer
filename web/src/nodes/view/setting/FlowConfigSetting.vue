@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import ParamsSetting from "@/nodes/view/setting/ParamsSetting.vue";
 import FtpTransferSetting from "@/nodes/view/setting/FtpTransferSetting.vue";
+import UploadCosSetting from "@/nodes/view/setting/UploadCosSetting.vue";
 import { computed } from "vue";
 import ExecuteSqlSetting from "@/nodes/view/setting/ExecuteSqlSetting.vue";
 
@@ -26,6 +27,7 @@ function handleSave(config) {
 <template>
   <ParamsSetting v-model:visible="localVisible" :config="config" @save="handleSave" v-if="type==='flow_params'"/>
   <FtpTransferSetting v-model:visible="localVisible" :config="config" @save="handleSave" v-if="type==='ftp_transfer'"/>
+  <UploadCosSetting v-model:visible="localVisible" :config="config" @save="handleSave" v-if="type==='upload_cos'"/>
   <ExecuteSqlSetting v-model:visible="localVisible" :config="config" @save="handleSave" v-if="type==='execute_sql'"/>
 </template>
 

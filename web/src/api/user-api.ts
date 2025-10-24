@@ -1,10 +1,18 @@
-import { ApiRequest, type ApiResponse } from './base-api'
-import type { User } from './auth-api'
+import { BaseApi } from './base-api'
+import type {
+  User,
+  Role,
+  UserFormData,
+  UserStatus,
+  SystemStats,
+  AuditLog
+} from '@/data/types/user-types'
 
+// 用户API请求响应类型
 export interface UserListParams {
   page?: number
   per_page?: number
-  status?: string
+  status?: UserStatus
   email?: string
   name?: string
 }
@@ -19,88 +27,94 @@ export interface UserListResponse {
   }
 }
 
-export interface CreateUserRequest {
-  email: string
+export interface CreateUserRequest extends UserFormData {
   password?: string
-  name: string
-  avatar_url?: string
-  status?: 'active' | 'inactive' | 'suspended'
-  roles?: string[]
 }
 
 export interface UpdateUserRequest {
-  email?: string
   name?: string
-  avatar_url?: string
-  status?: 'active' | 'inactive' | 'suspended'
+  email?: string
+  status?: UserStatus
+  phone?: string
+  department?: string
+  position?: string
 }
 
 export interface AssignRolesRequest {
-  roles: string[]
+  role_ids: number[]
 }
 
-export interface Role {
-  id: number
-  name: string
-  display_name: string
-  description?: string
-  permissions: string[]
-  system_role: boolean
-  user_count: number
-  permission_count?: number
-  created_at: string
+export interface ChangePasswordRequest {
+  current_password: string
+  new_password: string
+  confirm_password: string
 }
 
-class UserApi {
-  // 获取用户列表
-  static list(params?: UserListParams): Promise<ApiResponse<UserListResponse>> {
-    return ApiRequest<UserListResponse>('GET', '/users', null, params)
-  }
-
-  // 获取用户详情
-  static show(id: number): Promise<ApiResponse<{ user: User }>> {
-    return ApiRequest<{ user: User }>('GET', `/users/${id}`)
-  }
-
-  // 创建用户
-  static create(data: CreateUserRequest): Promise<ApiResponse<{ user: User; message: string }>> {
-    return ApiRequest<{ user: User; message: string }>('POST', '/users', data)
-  }
-
-  // 更新用户
-  static update(id: number, data: UpdateUserRequest): Promise<ApiResponse<{ user: User; message: string }>> {
-    return ApiRequest<{ user: User; message: string }>('PUT', `/users/${id}`, data)
-  }
-
-  // 删除用户
-  static delete(id: number): Promise<ApiResponse<{ message: string }>> {
-    return ApiRequest<{ message: string }>('DELETE', `/users/${id}`)
+// 用户API类
+export class UserApi extends BaseApi {
+  constructor() {
+    super('sys_user')
   }
 
   // 修改用户状态
-  static changeStatus(id: number, status: string): Promise<ApiResponse<{ user: User; message: string }>> {
-    return ApiRequest<{ user: User; message: string }>('PUT', `/users/${id}/change_status`, { status })
+  async changeStatus(id: number, status: UserStatus): Promise<User> {
+    return this.put<User>(`${id}/change_status`, { status })
   }
 
   // 分配角色
-  static assignRoles(id: number, data: AssignRolesRequest): Promise<ApiResponse<{ user: User; message: string }>> {
-    return ApiRequest<{ user: User; message: string }>('PUT', `/users/${id}/assign_roles`, data)
+  async assignRoles(id: number, data: AssignRolesRequest): Promise<User> {
+    return this.put<User>(`${id}/assign_roles`, data)
   }
 
   // 移除角色
-  static removeRole(id: number, roleName: string): Promise<ApiResponse<{ user: User; message: string }>> {
-    return ApiRequest<{ user: User; message: string }>('DELETE', `/users/${id}/remove_role`, { role_name: roleName })
+  async removeRole(id: number, roleId: number): Promise<User> {
+    return this.delete<User>(`${id}/remove_role`, { role_id: roleId })
   }
 
   // 获取所有角色
-  static getRoles(): Promise<ApiResponse<{ roles: Role[] }>> {
-    return ApiRequest<{ roles: Role[] }>('GET', '/users/roles')
+  async getRoles(): Promise<Role[]> {
+    return this.get<Role[]>('roles')
   }
 
-  // 获取所有权限
-  static getPermissions(): Promise<ApiResponse<{ permissions: string[]; descriptions: Record<string, string> }>> {
-    return ApiRequest<{ permissions: string[]; descriptions: Record<string, string> }>('GET', '/users/permissions')
+  // 获取权限列表
+  async getPermissions(): Promise<{ permissions: string[]; descriptions: Record<string, string> }> {
+    return this.get('permissions')
+  }
+
+  // 修改密码
+  async changePassword(id: number, data: ChangePasswordRequest): Promise<void> {
+    return this.put<void>(`${id}/change_password`, data)
+  }
+
+  // 重置密码
+  async resetPassword(id: number): Promise<{ temp_password: string }> {
+    return this.post<{ temp_password: string }>(`${id}/reset_password`)
+  }
+
+  // 获取用户统计数据
+  async getStats(): Promise<SystemStats> {
+    return this.get<SystemStats>('stats')
+  }
+
+  // 获取审计日志
+  async getAuditLogs(params?: { page?: number; per_page?: number }): Promise<AuditLog[]> {
+    return this.get<AuditLog[]>('audit_logs', params)
+  }
+
+  // 批量操作
+  async batchUpdate(userIds: number[], data: Partial<UpdateUserRequest>): Promise<void> {
+    return this.post<void>('batch_update', { user_ids: userIds, ...data })
+  }
+
+  async batchDelete(userIds: number[]): Promise<void> {
+    return this.post<void>('batch_delete', { user_ids: userIds })
+  }
+
+  async batchChangeStatus(userIds: number[], status: UserStatus): Promise<void> {
+    return this.post<void>('batch_change_status', { user_ids: userIds, status })
   }
 }
 
-export default UserApi
+// 导出单例实例
+const userApi = new UserApi()
+export default userApi

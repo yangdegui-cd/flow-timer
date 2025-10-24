@@ -148,7 +148,7 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useAuthStore } from '@/stores/auth'
-import AuthApi from '@/api/auth-api'
+import oauthApi from '@/api/oauth-api'
 
 import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
@@ -302,10 +302,10 @@ const handleRegister = async () => {
 
 // OAuth handlers
 const handleGithubLogin = () => {
-  AuthApi.githubLogin()
+  oauthApi.githubLogin()
 }
 
 const handleWechatLogin = () => {
-  AuthApi.wechatLogin()
+  oauthApi.wechatLogin()
 }
 </script>

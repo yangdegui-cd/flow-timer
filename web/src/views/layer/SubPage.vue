@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useRoute, useRouter } from "vue-router";
 
 // Props
 interface Props {
@@ -12,10 +13,13 @@ interface Props {
   size?: 'small' | 'medium' | 'large'
 }
 
+const router = useRouter()
+const route = useRoute()
+
 const props = withDefaults(defineProps<Props>(), {
   description: '',
   icon: '',
-  iconColor: 'text-gray-600',
+  iconColor: 'text-primary-600',
   showBack: false,
   backLabel: '返回',
   size: 'medium'
@@ -45,7 +49,7 @@ const iconSize = computed(() => {
 
 // Methods
 const handleBack = () => {
-  emit('back')
+  router.back()
 }
 </script>
 

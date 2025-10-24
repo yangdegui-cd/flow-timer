@@ -37,11 +37,11 @@ const loadStats = async () => {
     stats.value = await ApiGetTaskExecutionStats()
   } catch (error: any) {
     console.error('Failed to load stats:', error)
-    toast.add({ 
-      severity: 'error', 
-      summary: '加载统计失败', 
-      detail: error.msg || '网络错误', 
-      life: 3000 
+    toast.add({
+      severity: 'error',
+      summary: '加载统计失败',
+      detail: error.msg || '网络错误',
+      life: 3000
     })
   } finally {
     loading.value = false
@@ -51,7 +51,7 @@ const loadStats = async () => {
 // 格式化时长
 const formatDuration = (seconds?: number) => {
   if (!seconds) return '-'
-  
+
   if (seconds < 60) {
     return `${Math.round(seconds)}秒`
   } else if (seconds < 3600) {
@@ -113,7 +113,7 @@ onUnmounted(() => {
             <p class="text-2xl font-bold text-gray-900">{{ stats.total.toLocaleString() }}</p>
           </div>
           <div class="p-3 bg-blue-50 rounded-full">
-            <i class="pi pi-chart-bar text-xl text-blue-600"></i>
+            <i class="pi pi-chart-bar text-xl text-primary-600"></i>
           </div>
         </div>
         <div class="mt-4">
@@ -184,9 +184,9 @@ onUnmounted(() => {
       <div class="bg-white rounded-lg shadow p-6 border border-surface">
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-lg font-semibold text-gray-900">状态分布</h3>
-          <Button 
-            icon="pi pi-refresh" 
-            text 
+          <Button
+            icon="pi pi-refresh"
+            text
             size="small"
             severity="secondary"
             @click="loadStats"
@@ -195,14 +195,14 @@ onUnmounted(() => {
 
         <!-- 状态统计列表 -->
         <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <div 
-            v-for="(count, status) in stats.by_status" 
+          <div
+            v-for="(count, status) in stats.by_status"
             :key="status"
             class="text-center p-4 rounded-lg border border-surface">
-            <div 
+            <div
               class="w-12 h-12 rounded-full mx-auto mb-2 flex items-center justify-center"
               :style="{ backgroundColor: `${statusColors[status as keyof typeof statusColors]}20` }">
-              <div 
+              <div
                 class="w-6 h-6 rounded-full"
                 :style="{ backgroundColor: statusColors[status as keyof typeof statusColors] }">
               </div>
@@ -221,10 +221,10 @@ onUnmounted(() => {
     <div v-if="stats?.queue_info?.queues?.length" class="mt-6">
       <div class="bg-white rounded-lg shadow p-6 border border-surface">
         <h3 class="text-lg font-semibold text-gray-900 mb-4">队列状态</h3>
-        
+
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div 
-            v-for="queue in stats.queue_info.queues" 
+          <div
+            v-for="queue in stats.queue_info.queues"
             :key="queue.name"
             class="flex items-center justify-between p-3 border border-surface rounded-lg">
             <div>
@@ -244,10 +244,10 @@ onUnmounted(() => {
     <div v-else-if="!loading" class="text-center py-8">
       <i class="pi pi-exclamation-triangle text-4xl text-gray-400 mb-4 block"></i>
       <p class="text-gray-500">暂无统计数据</p>
-      <Button 
-        label="重新加载" 
-        icon="pi pi-refresh" 
-        severity="secondary" 
+      <Button
+        label="重新加载"
+        icon="pi pi-refresh"
+        severity="secondary"
         variant="outlined"
         size="small"
         class="mt-4"

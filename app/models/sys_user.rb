@@ -4,6 +4,11 @@ class SysUser < ApplicationRecord
   has_many :sys_user_roles, dependent: :destroy
   has_many :sys_roles, through: :sys_user_roles
   has_many :sys_oauth_providers, dependent: :destroy
+  has_many :sys_logs, foreign_key: :user_id, dependent: :destroy
+  has_many :sys_user_projects, dependent: :destroy
+  has_many :projects, through: :sys_user_projects
+  has_many :ads_accounts, foreign_key: :sys_user_id, dependent: :destroy
+  has_many :automation_logs, foreign_key: :sys_user_id, dependent: :nullify
 
   validates :email, presence: true, uniqueness: { case_sensitive: false }
   validates :name, presence: true
@@ -39,11 +44,11 @@ class SysUser < ApplicationRecord
   end
 
   def has_permission?(permission)
-    sys_roles.where("JSON_CONTAINS(permissions, ?)", "\"#{permission}\"").exists?
+    permissions.map(&:code).include?(permission)
   end
 
   def permissions
-    sys_roles.pluck(:permissions).flatten.uniq
+    sys_roles.includes(:sys_permissions).map(&:sys_permissions).flatten.uniq
   end
 
   def add_role(role_name)
@@ -85,6 +90,38 @@ class SysUser < ApplicationRecord
     )
     oauth_provider.save!
     oauth_provider
+  end
+
+  # 项目相关方法
+  def project_role(project)
+    sys_user_projects.find_by(project: project)&.role
+  end
+
+  def has_project_access?(project)
+    projects.exists?(id: project.id)
+  end
+
+  def owned_projects
+    projects.joins(:sys_user_projects).where(sys_user_projects: { role: 'owner' })
+  end
+
+  def member_projects
+    projects.joins(:sys_user_projects).where(sys_user_projects: { role: 'member' })
+  end
+
+  def viewable_projects
+    projects.joins(:sys_user_projects).where(sys_user_projects: { role: 'viewer' })
+  end
+
+  def join_project(project, role = 'member')
+    sys_user_projects.find_or_create_by(project: project) do |user_project|
+      user_project.role = role
+      user_project.assigned_at = Time.current
+    end
+  end
+
+  def leave_project(project)
+    sys_user_projects.where(project: project).destroy_all
   end
 
   # 查找或创建OAuth用户

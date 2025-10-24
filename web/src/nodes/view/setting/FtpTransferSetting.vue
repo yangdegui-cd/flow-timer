@@ -141,9 +141,9 @@ watch(() => config.value.source_setting.multifile_merge, (val) => {
       </div>
 
       <!-- 自定义主机配置 -->
-      <HostConfigSetting 
+      <HostConfigSetting
         v-if="showSourceHostSetting"
-        v-model="config.source_setting.host_setting" 
+        v-model="config.source_setting.host_setting"
         title="源主机配置"
         :show-actions="true"
       />
@@ -151,7 +151,7 @@ watch(() => config.value.source_setting.multifile_merge, (val) => {
       <!-- 本机提示 -->
       <div v-if="config.source_setting.source_type === 'localhost'" class="localhost-info mb-4">
         <div class="p-3 bg-blue-50 border border-blue-200 rounded-md">
-          <div class="flex items-center text-blue-700">
+          <div class="flex items-center text-primary-700">
             <i class="pi pi-info-circle mr-2"></i>
             <span class="text-sm">将使用服务器本机进行文件操作</span>
           </div>
@@ -240,9 +240,9 @@ watch(() => config.value.source_setting.multifile_merge, (val) => {
       </div>
 
       <!-- 自定义主机配置 -->
-      <HostConfigSetting 
+      <HostConfigSetting
         v-if="showTargetHostSetting"
-        v-model="config.target_setting.host_setting" 
+        v-model="config.target_setting.host_setting"
         title="目标主机配置"
         :show-actions="true"
       />
@@ -250,7 +250,7 @@ watch(() => config.value.source_setting.multifile_merge, (val) => {
       <!-- 本机提示 -->
       <div v-if="config.target_setting.source_type === 'localhost'" class="localhost-info mb-4">
         <div class="p-3 bg-blue-50 border border-blue-200 rounded-md">
-          <div class="flex items-center text-blue-700">
+          <div class="flex items-center text-primary-700">
             <i class="pi pi-info-circle mr-2"></i>
             <span class="text-sm">将使用服务器本机进行文件操作</span>
           </div>
