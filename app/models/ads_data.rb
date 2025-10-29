@@ -7,21 +7,6 @@ class AdsData < ApplicationRecord
   validates :platform, presence: true, inclusion: { in: %w[facebook google twitter tiktok] }
   validates :date, presence: true
 
-  # JSON字段处理
-  serialize :ad_creative_data, coder: JSON
-  serialize :targeting_data, coder: JSON
-  serialize :countries, coder: JSON
-  serialize :regions, coder: JSON
-  serialize :cities, coder: JSON
-  serialize :interests, coder: JSON
-  serialize :behaviors, coder: JSON
-  serialize :demographics, coder: JSON
-  serialize :placements, coder: JSON
-  serialize :platform_metrics, coder: JSON
-  serialize :raw_data, coder: JSON
-  serialize :custom_fields, coder: JSON
-  serialize :tags, coder: JSON
-
   # 作用域
   scope :by_platform, ->(platform) { where(platform: platform) }
   scope :by_date_range, ->(start_date, end_date) { where(date: start_date..end_date) }
@@ -37,14 +22,6 @@ class AdsData < ApplicationRecord
   scope :by_quarter, ->(year, quarter) { where(year: year.to_s, quarter: "#{year}-Q#{quarter}") }
   scope :by_week, ->(year, week) { where(year: year.to_s, week: sprintf('%04d-%02d', year, week)) }
 
-  # 地理位置作用域
-  scope :by_country, ->(country_code) { where(country_code: country_code) }
-  scope :by_region, ->(country_code, region_code) { where(country_code: country_code, region_code: region_code) }
-
-  # 设备平台作用域
-  scope :mobile_only, -> { where(device_platform: 'mobile') }
-  scope :desktop_only, -> { where(device_platform: 'desktop') }
-
   # 层级作用域
   scope :campaign_level, -> { where.not(campaign_id: nil).where(adset_id: nil, ad_id: nil) }
   scope :adset_level, -> { where.not(adset_id: nil).where(ad_id: nil) }
@@ -52,7 +29,6 @@ class AdsData < ApplicationRecord
 
   # 回调
   before_validation :set_time_dimensions
-  before_validation :generate_unique_key
   before_save :calculate_derived_metrics
 
   # 实例方法
@@ -268,34 +244,7 @@ class AdsData < ApplicationRecord
     self.hour = hour if hour.present?
   end
 
-  def generate_unique_key
-    key_parts = [
-      platform,
-      ads_account_id,
-      date.strftime('%Y%m%d'),
-      campaign_id,
-      adset_id,
-      ad_id,
-      hour,
-      device_platform,
-      publisher_platform,
-      placement_type,
-      country_code,
-      region_code,
-      age_range,
-      gender,
-      device_model,
-      operating_system
-    ].compact
-
-    self.unique_key = Digest::MD5.hexdigest(key_parts.join('|'))
-  end
 
   def calculate_derived_metrics
-    # 不再存储计算指标，只在需要时动态计算
-
-    # 设置数据获取时间
-    self.data_fetched_at ||= Time.current
-    self.last_updated_at = Time.current
   end
 end

@@ -10,18 +10,13 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2025_10_24_080953) do
+ActiveRecord::Schema[7.1].define(version: 2025_10_29_041154) do
   create_table "ads_accounts", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
     t.string "name", null: false
     t.string "account_id", null: false
     t.bigint "ads_platform_id", null: false
     t.bigint "project_id"
     t.bigint "sys_user_id", null: false
-    t.text "access_token"
-    t.text "refresh_token"
-    t.datetime "token_expires_at"
-    t.string "app_id"
-    t.text "app_secret"
     t.string "account_status", default: "active"
     t.string "currency"
     t.string "timezone"
@@ -44,6 +39,63 @@ ActiveRecord::Schema[7.1].define(version: 2025_10_24_080953) do
     t.index ["sys_user_id"], name: "index_ads_accounts_on_sys_user_id"
   end
 
+  create_table "ads_adjust_data", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
+    t.bigint "project_id", null: false, comment: "项目ID"
+    t.string "platform", default: "adjust", null: false, comment: "平台标识"
+    t.date "date", null: false, comment: "日期"
+    t.string "hour", comment: "小时 00-23"
+    t.datetime "datetime", comment: "精确到小时的时间"
+    t.string "campaign_network", comment: "推广活动网络（对应 campaign_name）"
+    t.string "campaign_network_id", comment: "推广活动网络ID（对应 campaign_id）"
+    t.string "adgroup_network", comment: "广告组网络（对应 adset_name）"
+    t.string "adgroup_network_id", comment: "广告组网络ID（对应 adset_id）"
+    t.string "creative_network", comment: "创意网络（对应 ad_name/creative_name）"
+    t.string "creative_network_id", comment: "创意网络ID（对应 ad_id/creative_id）"
+    t.bigint "installs", default: 0, comment: "安装数"
+    t.bigint "network_clicks", default: 0, comment: "网络点击数（对应 clicks）"
+    t.bigint "network_impressions", default: 0, comment: "网络展示数（对应 impressions）"
+    t.decimal "cost", precision: 15, scale: 2, default: "0.0", comment: "成本（对应 spend）"
+    t.decimal "cohort_all_revenue", precision: 15, scale: 2, default: "0.0", comment: "群组总收入"
+    t.decimal "all_revenue_total_d0", precision: 15, scale: 2, default: "0.0", comment: "D0 总收入"
+    t.decimal "all_revenue_total_d1", precision: 15, scale: 2, default: "0.0", comment: "D1 总收入"
+    t.decimal "all_revenue_total_d2", precision: 15, scale: 2, default: "0.0", comment: "D2 总收入"
+    t.decimal "all_revenue_total_d3", precision: 15, scale: 2, default: "0.0", comment: "D3 总收入"
+    t.decimal "all_revenue_total_d4", precision: 15, scale: 2, default: "0.0", comment: "D4 总收入"
+    t.decimal "all_revenue_total_d5", precision: 15, scale: 2, default: "0.0", comment: "D5 总收入"
+    t.decimal "all_revenue_total_d6", precision: 15, scale: 2, default: "0.0", comment: "D6 总收入"
+    t.bigint "retained_users_d0", default: 0, comment: "D0 留存用户数"
+    t.bigint "retained_users_d1", default: 0, comment: "D1 留存用户数"
+    t.bigint "retained_users_d2", default: 0, comment: "D2 留存用户数"
+    t.bigint "retained_users_d3", default: 0, comment: "D3 留存用户数"
+    t.bigint "retained_users_d4", default: 0, comment: "D4 留存用户数"
+    t.bigint "retained_users_d5", default: 0, comment: "D5 留存用户数"
+    t.bigint "retained_users_d6", default: 0, comment: "D6 留存用户数"
+    t.bigint "paying_users_d0", default: 0, comment: "D0 付费用户数"
+    t.bigint "paying_users_d1", default: 0, comment: "D1 付费用户数"
+    t.bigint "paying_users_d2", default: 0, comment: "D2 付费用户数"
+    t.bigint "paying_users_d3", default: 0, comment: "D3 付费用户数"
+    t.bigint "paying_users_d4", default: 0, comment: "D4 付费用户数"
+    t.bigint "paying_users_d5", default: 0, comment: "D5 付费用户数"
+    t.bigint "paying_users_d6", default: 0, comment: "D6 付费用户数"
+    t.string "data_status", default: "active", comment: "active, deleted, invalid"
+    t.string "data_source", default: "adjust_api", comment: "adjust_api, manual, import"
+    t.datetime "data_fetched_at", comment: "数据拉取时间"
+    t.string "unique_key", comment: "唯一标识：project_id + date + hour + dimensions 的组合哈希"
+    t.text "raw_data", comment: "完整的原始API响应（JSON）"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["adgroup_network"], name: "idx_ads_adjust_data_adgroup"
+    t.index ["campaign_network"], name: "idx_ads_adjust_data_campaign"
+    t.index ["creative_network"], name: "idx_ads_adjust_data_creative"
+    t.index ["data_fetched_at"], name: "index_ads_adjust_data_on_data_fetched_at"
+    t.index ["data_status"], name: "index_ads_adjust_data_on_data_status"
+    t.index ["date"], name: "index_ads_adjust_data_on_date"
+    t.index ["datetime"], name: "index_ads_adjust_data_on_datetime"
+    t.index ["project_id", "date", "hour"], name: "idx_ads_adjust_data_project_date_hour"
+    t.index ["project_id", "date"], name: "idx_ads_adjust_data_project_date"
+    t.index ["project_id"], name: "index_ads_adjust_data_on_project_id"
+  end
+
   create_table "ads_data", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
     t.bigint "ads_account_id", null: false
     t.bigint "project_id", null: false
@@ -60,104 +112,15 @@ ActiveRecord::Schema[7.1].define(version: 2025_10_24_080953) do
     t.string "adset_name"
     t.string "ad_id"
     t.string "ad_name"
-    t.string "creative_id"
-    t.string "creative_name"
-    t.string "campaign_status"
-    t.string "campaign_objective"
-    t.string "buying_type"
-    t.decimal "campaign_daily_budget", precision: 15, scale: 2
-    t.decimal "campaign_lifetime_budget", precision: 15, scale: 2
-    t.string "adset_status"
-    t.string "optimization_goal"
-    t.string "billing_event"
-    t.decimal "adset_daily_budget", precision: 15, scale: 2
-    t.decimal "bid_amount", precision: 15, scale: 2
-    t.string "ad_status"
-    t.string "ad_format"
-    t.text "ad_creative_data"
-    t.text "targeting_data"
-    t.string "age_min"
-    t.string "age_max"
-    t.string "gender"
-    t.text "countries"
-    t.text "regions"
-    t.text "cities"
-    t.text "interests"
-    t.text "behaviors"
-    t.text "demographics"
-    t.text "placements"
-    t.string "device_platform"
-    t.string "publisher_platform"
     t.bigint "impressions", default: 0
     t.bigint "clicks", default: 0
     t.decimal "spend", precision: 15, scale: 2, default: "0.0"
-    t.bigint "reach", default: 0
-    t.decimal "frequency", precision: 8, scale: 4, default: "0.0"
-    t.decimal "cpm", precision: 15, scale: 4, default: "0.0"
-    t.decimal "cpc", precision: 15, scale: 4, default: "0.0"
-    t.decimal "ctr", precision: 10, scale: 6, default: "0.0"
     t.bigint "conversions", default: 0
-    t.bigint "purchases", default: 0
-    t.decimal "conversion_value", precision: 15, scale: 2, default: "0.0"
-    t.decimal "purchase_value", precision: 15, scale: 2, default: "0.0"
-    t.decimal "roas", precision: 10, scale: 4, default: "0.0"
-    t.decimal "cost_per_conversion", precision: 15, scale: 4, default: "0.0"
-    t.decimal "cost_per_purchase", precision: 15, scale: 4, default: "0.0"
-    t.bigint "video_views", default: 0
-    t.bigint "video_views_3s", default: 0
-    t.bigint "video_views_10s", default: 0
-    t.bigint "video_views_15s", default: 0
-    t.bigint "video_views_25_percent", default: 0
-    t.bigint "video_views_50_percent", default: 0
-    t.bigint "video_views_75_percent", default: 0
-    t.bigint "video_views_100_percent", default: 0
-    t.decimal "video_avg_play_time", precision: 10, scale: 2, default: "0.0"
-    t.bigint "likes", default: 0
-    t.bigint "comments", default: 0
-    t.bigint "shares", default: 0
-    t.bigint "saves", default: 0
-    t.bigint "follows", default: 0
-    t.bigint "link_clicks", default: 0
-    t.bigint "post_engagements", default: 0
     t.bigint "app_installs", default: 0
-    t.bigint "app_launches", default: 0
-    t.bigint "registrations", default: 0
-    t.bigint "add_to_carts", default: 0
-    t.bigint "checkouts", default: 0
-    t.string "attribution_window"
-    t.string "conversion_device"
-    t.string "conversion_action_type"
-    t.string "audience_type"
-    t.string "audience_name"
-    t.bigint "audience_size"
-    t.string "country_code"
-    t.string "country_name"
-    t.string "region_code"
-    t.string "region_name"
-    t.string "city_name"
-    t.string "device_type"
-    t.string "os_type"
-    t.string "browser_type"
-    t.string "placement_type"
-    t.string "ad_position"
-    t.decimal "bid_strategy_amount", precision: 15, scale: 4
-    t.string "bid_strategy_type"
-    t.decimal "budget_remaining", precision: 15, scale: 2
-    t.decimal "budget_used_percent", precision: 5, scale: 2
-    t.decimal "quality_score", precision: 5, scale: 2
-    t.decimal "relevance_score", precision: 5, scale: 2
-    t.datetime "campaign_start_time"
-    t.datetime "campaign_end_time"
-    t.datetime "adset_start_time"
-    t.datetime "adset_end_time"
-    t.text "platform_metrics"
     t.text "raw_data"
-    t.text "custom_fields"
-    t.text "tags"
     t.string "data_status", default: "active"
     t.string "data_source"
     t.datetime "data_fetched_at"
-    t.datetime "last_updated_at"
     t.string "unique_key"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -166,7 +129,6 @@ ActiveRecord::Schema[7.1].define(version: 2025_10_24_080953) do
     t.string "day_of_week", comment: "星期几"
     t.string "impression_device", comment: "展示设备"
     t.string "device_model", comment: "设备型号"
-    t.string "operating_system", comment: "操作系统"
     t.string "browser_name", comment: "浏览器名称"
     t.string "carrier", comment: "运营商"
     t.string "dma_code", comment: "DMA区域代码"
@@ -184,32 +146,24 @@ ActiveRecord::Schema[7.1].define(version: 2025_10_24_080953) do
     t.bigint "page_likes", default: 0, comment: "页面赞"
     t.bigint "post_shares", default: 0, comment: "帖子分享"
     t.bigint "video_play_actions", default: 0, comment: "视频播放操作"
+    t.bigint "installs", default: 0
+    t.decimal "revenue", precision: 15, scale: 2, default: "0.0"
     t.index ["ad_id", "date"], name: "idx_ads_data_ad_date"
-    t.index ["ad_status"], name: "index_ads_data_on_ad_status"
     t.index ["ads_account_id", "platform", "date"], name: "idx_ads_data_account_platform_date"
     t.index ["ads_account_id"], name: "index_ads_data_on_ads_account_id"
     t.index ["adset_id", "date"], name: "idx_ads_data_adset_date"
-    t.index ["adset_status"], name: "index_ads_data_on_adset_status"
     t.index ["age_range"], name: "index_ads_data_on_age_range", comment: "年龄段索引"
     t.index ["campaign_id", "date"], name: "idx_ads_data_campaign_date"
-    t.index ["campaign_status"], name: "index_ads_data_on_campaign_status"
-    t.index ["country_code", "region_code"], name: "idx_ads_data_country_region"
-    t.index ["country_code", "region_code"], name: "index_ads_data_on_country_code_and_region_code", comment: "地理位置组合索引"
-    t.index ["country_code"], name: "index_ads_data_on_country_code"
     t.index ["creative_type"], name: "index_ads_data_on_creative_type", comment: "创意类型索引"
     t.index ["data_fetched_at"], name: "index_ads_data_on_data_fetched_at"
     t.index ["data_status"], name: "index_ads_data_on_data_status"
     t.index ["datetime"], name: "index_ads_data_on_datetime", comment: "时间索引"
     t.index ["day_of_week"], name: "index_ads_data_on_day_of_week", comment: "星期索引"
     t.index ["device_model"], name: "index_ads_data_on_device_model", comment: "设备型号索引"
-    t.index ["device_platform"], name: "index_ads_data_on_device_platform"
     t.index ["hour_of_day"], name: "index_ads_data_on_hour_of_day", comment: "小时索引"
-    t.index ["operating_system"], name: "index_ads_data_on_operating_system", comment: "操作系统索引"
-    t.index ["placement_type"], name: "index_ads_data_on_placement_type"
     t.index ["platform", "date"], name: "idx_ads_data_platform_date"
     t.index ["project_id", "platform", "date"], name: "idx_ads_data_project_platform_date"
     t.index ["project_id"], name: "index_ads_data_on_project_id"
-    t.index ["publisher_platform"], name: "index_ads_data_on_publisher_platform"
     t.index ["year", "month"], name: "idx_ads_data_year_month"
     t.index ["year", "quarter"], name: "idx_ads_data_year_quarter"
     t.index ["year", "week"], name: "idx_ads_data_year_week"
@@ -264,175 +218,48 @@ ActiveRecord::Schema[7.1].define(version: 2025_10_24_080953) do
     t.index ["project_id"], name: "index_automation_rules_on_project_id"
   end
 
-  create_table "catalogs", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
-    t.string "name", null: false
-    t.bigint "space_id", null: false
-    t.integer "sort", default: 0, null: false
+  create_table "configs", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
+    t.string "website_base_url", limit: 225
+    t.boolean "use_email_notification"
+    t.string "smtp_server"
+    t.integer "smtp_port"
+    t.string "email_notification_email"
+    t.string "email_notification_pwd"
+    t.string "email_notification_name"
+    t.string "email_notification_display_name"
+    t.boolean "email_notification_use_tls"
+    t.string "qy_wechat_notification_key"
+    t.string "qy_wechat_notification_url"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["space_id"], name: "fk_rails_179c689b91"
+    t.string "adjust_api_token"
+    t.string "adjust_api_server", default: "https://dash.adjust.com/control-center/reports-service/report"
+    t.string "facebook_app_id"
+    t.string "facebook_app_secret"
+    t.string "facebook_auth_callback_url", limit: 225
+    t.text "facebook_access_token"
+    t.datetime "facebook_token_expired_at"
   end
 
-  create_table "ft_flow_versions", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
-    t.string "flow_id", null: false
-    t.integer "version", default: 1, null: false
-    t.json "flow_config", null: false
+  create_table "metrics", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
+    t.string "name_cn", null: false, comment: "中文名称"
+    t.string "name_en", null: false, comment: "英文名称"
+    t.text "description", comment: "描述"
+    t.text "sql_expression", null: false, comment: "SQL表达式"
+    t.string "unit", comment: "单位"
+    t.string "color", comment: "展示颜色"
+    t.decimal "filter_max", precision: 15, scale: 2, comment: "筛选最大值"
+    t.decimal "filter_min", precision: 15, scale: 2, comment: "筛选最小值"
+    t.string "category", comment: "分类"
+    t.string "data_source", comment: "数据源：platform(平台数据), adjust(Adjust数据), calculated(计算指标)"
+    t.integer "sort_order", default: 0, comment: "排序"
+    t.boolean "is_active", default: true, comment: "是否启用"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-  end
-
-  create_table "ft_flows", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
-    t.string "name", null: false
-    t.string "flow_id", null: false
-    t.text "description"
-    t.json "params", null: false
-    t.bigint "version_id", default: 1, null: false
-    t.bigint "catalog_id", null: false
-    t.string "status", default: "draft", null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["catalog_id"], name: "index_ft_flows_on_catalog_id"
-    t.index ["flow_id"], name: "index_ft_flows_on_flow_id", unique: true
-    t.index ["status"], name: "index_ft_flows_on_status"
-    t.index ["version_id"], name: "fk_rails_aeceb6558b"
-  end
-
-  create_table "ft_task_executions", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
-    t.string "task_id", limit: 225, null: false
-    t.string "execution_id", null: false
-    t.string "status", default: "pending", null: false
-    t.json "result"
-    t.text "error_message"
-    t.json "data_quality"
-    t.datetime "started_at"
-    t.datetime "finished_at"
-    t.integer "duration_seconds"
-    t.string "execution_type", default: "system", comment: "system, manual"
-    t.string "queue"
-    t.string "data_time", null: false, comment: "数据时间"
-    t.json "system_params", null: false
-    t.json "custom_params", null: false
-    t.string "resque_job_id"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["created_at"], name: "index_ft_task_executions_on_created_at"
-    t.index ["execution_id"], name: "index_ft_task_executions_on_execution_id", unique: true
-    t.index ["resque_job_id"], name: "index_ft_task_executions_on_resque_job_id"
-    t.index ["status"], name: "index_ft_task_executions_on_status"
-    t.index ["task_id"], name: "index_ft_task_executions_on_task_id"
-  end
-
-  create_table "ft_tasks", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
-    t.string "name", null: false
-    t.string "description"
-    t.string "task_id", null: false
-    t.string "flow_id", null: false
-    t.bigint "catalog_id", null: false
-    t.string "status", null: false
-    t.string "task_type", null: false
-    t.string "period_type"
-    t.string "cron_expression"
-    t.timestamp "effective_time", null: false
-    t.timestamp "lose_efficacy_time"
-    t.json "params"
-    t.string "queue", default: "default", null: false
-    t.integer "priority", default: 0, null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.json "dependents", comment: "依赖的任务ID列表，存储为JSON数组"
-    t.index ["catalog_id"], name: "index_ft_tasks_on_catalog_id"
-    t.index ["flow_id"], name: "index_ft_tasks_on_flow_id"
-    t.index ["period_type"], name: "index_ft_tasks_on_period_type"
-    t.index ["priority"], name: "index_ft_tasks_on_priority"
-    t.index ["status"], name: "index_ft_tasks_on_status"
-    t.index ["task_id"], name: "index_ft_tasks_on_task_id", unique: true
-  end
-
-  create_table "meta_cos", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
-    t.string "name", null: false, comment: "COS配置名称"
-    t.text "description", comment: "描述信息"
-    t.string "region", null: false, comment: "COS地域，如ap-guangzhou"
-    t.string "secret_id", null: false, comment: "腾讯云SecretId"
-    t.string "secret_key", null: false, comment: "腾讯云SecretKey（加密存储）"
-    t.string "bucket", null: false, comment: "存储桶名称"
-    t.string "prefix", default: "", comment: "文件前缀路径"
-    t.string "storage_class", default: "STANDARD", comment: "存储类型：STANDARD, STANDARD_IA, ARCHIVE等"
-    t.string "acl", default: "private", comment: "访问权限：private, public-read, public-read-write"
-    t.boolean "use_ssl", default: true, comment: "是否使用SSL"
-    t.json "extra_config", comment: "额外配置参数（JSON格式）"
-    t.string "status", default: "inactive", comment: "状态：active, inactive, error, testing"
-    t.datetime "last_test_at", comment: "最后测试时间"
-    t.text "test_result", comment: "测试结果信息"
-    t.string "environment", default: "development", comment: "环境标识"
-    t.string "tags", comment: "标签，逗号分隔"
-    t.text "notes", comment: "备注信息"
-    t.integer "sort", default: 0, comment: "排序权重"
-    t.bigint "created_by", comment: "创建者ID"
-    t.bigint "updated_by", comment: "更新者ID"
-    t.bigint "catalog_id", comment: "所属目录ID"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["bucket", "region"], name: "index_meta_cos_on_bucket_and_region", comment: "存储桶地域组合索引"
-    t.index ["catalog_id"], name: "index_meta_cos_on_catalog_id", comment: "目录索引"
-    t.index ["created_by"], name: "index_meta_cos_on_created_by", comment: "创建者索引"
-    t.index ["environment"], name: "index_meta_cos_on_environment", comment: "环境索引"
-    t.index ["name"], name: "index_meta_cos_on_name", unique: true, comment: "COS配置名称唯一索引"
-    t.index ["region"], name: "index_meta_cos_on_region", comment: "地域索引"
-    t.index ["status"], name: "index_meta_cos_on_status", comment: "状态索引"
-  end
-
-  create_table "meta_datasources", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
-    t.string "name", null: false, comment: "连接名称"
-    t.string "db_type", null: false, comment: "数据库类型：mysql, oracle, hive, postgresql, mariadb, trino, clickhouse, sqlserver"
-    t.string "host", null: false, comment: "主机地址"
-    t.integer "port", null: false, comment: "端口号"
-    t.string "username", null: false, comment: "用户名"
-    t.string "password", null: false, comment: "密码"
-    t.text "description", comment: "描述信息"
-    t.string "status", default: "inactive", comment: "连接状态：active, inactive, error, testing"
-    t.json "extra_config", comment: "额外配置参数（JSON格式）"
-    t.datetime "last_test_at", comment: "最后测试时间"
-    t.text "test_result", comment: "测试结果信息"
-    t.bigint "created_by", comment: "创建者ID"
-    t.bigint "updated_by", comment: "更新者ID"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.bigint "catalog_id"
-    t.index ["catalog_id"], name: "index_meta_datasources_on_catalog_id"
-    t.index ["created_by"], name: "index_meta_datasources_on_created_by", comment: "创建者索引"
-    t.index ["db_type"], name: "index_meta_datasources_on_db_type", comment: "数据库类型索引"
-    t.index ["host", "port"], name: "index_meta_datasources_on_host_and_port", comment: "主机端口组合索引"
-    t.index ["name"], name: "index_meta_datasources_on_name", unique: true, comment: "连接名称唯一索引"
-    t.index ["status"], name: "index_meta_datasources_on_status", comment: "状态索引"
-  end
-
-  create_table "meta_hosts", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
-    t.string "name", null: false
-    t.string "description"
-    t.string "hostname", null: false
-    t.integer "port", default: 22
-    t.string "username", null: false
-    t.string "password"
-    t.text "ssh_key"
-    t.string "status", default: "active"
-    t.string "environment"
-    t.json "tags"
-    t.text "notes"
-    t.datetime "last_tested_at"
-    t.string "last_test_result"
-    t.text "last_test_error"
-    t.integer "sort", default: 0
-    t.string "created_by"
-    t.string "updated_by"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.string "auth_type"
-    t.bigint "catalog_id"
-    t.index ["catalog_id"], name: "index_meta_hosts_on_catalog_id"
-    t.index ["environment"], name: "index_meta_hosts_on_environment"
-    t.index ["hostname"], name: "index_meta_hosts_on_hostname"
-    t.index ["name"], name: "index_meta_hosts_on_name", unique: true
-    t.index ["status"], name: "index_meta_hosts_on_status"
+    t.index ["category"], name: "index_metrics_on_category"
+    t.index ["data_source"], name: "index_metrics_on_data_source"
+    t.index ["is_active"], name: "index_metrics_on_is_active"
+    t.index ["name_en"], name: "index_metrics_on_name_en", unique: true
   end
 
   create_table "projects", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
@@ -444,18 +271,10 @@ ActiveRecord::Schema[7.1].define(version: 2025_10_24_080953) do
     t.string "status", default: "active", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "adjust_game_token"
     t.index ["active_ads_automate"], name: "index_projects_on_active_ads_automate"
     t.index ["name"], name: "index_projects_on_name", unique: true
     t.index ["status"], name: "index_projects_on_status"
-  end
-
-  create_table "spaces", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
-    t.string "name"
-    t.string "space_type"
-    t.integer "sort"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["space_type"], name: "index_spaces_on_space_type"
   end
 
   create_table "sys_logs", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", comment: "系统操作日志表", force: :cascade do |t|
@@ -580,18 +399,12 @@ ActiveRecord::Schema[7.1].define(version: 2025_10_24_080953) do
   add_foreign_key "ads_accounts", "ads_platforms"
   add_foreign_key "ads_accounts", "projects"
   add_foreign_key "ads_accounts", "sys_users"
+  add_foreign_key "ads_adjust_data", "projects"
   add_foreign_key "ads_data", "ads_accounts"
   add_foreign_key "ads_data", "projects"
   add_foreign_key "automation_logs", "projects"
   add_foreign_key "automation_logs", "sys_users"
   add_foreign_key "automation_rules", "projects"
-  add_foreign_key "catalogs", "spaces", on_delete: :cascade
-  add_foreign_key "ft_flows", "catalogs", on_delete: :cascade
-  add_foreign_key "ft_flows", "ft_flow_versions", column: "version_id", on_delete: :cascade
-  add_foreign_key "ft_tasks", "catalogs", on_delete: :cascade
-  add_foreign_key "ft_tasks", "ft_flows", column: "flow_id", primary_key: "flow_id", on_delete: :cascade
-  add_foreign_key "meta_datasources", "catalogs"
-  add_foreign_key "meta_hosts", "catalogs"
   add_foreign_key "sys_logs", "sys_users", column: "user_id"
   add_foreign_key "sys_oauth_providers", "sys_users"
   add_foreign_key "sys_role_permissions", "sys_permissions"

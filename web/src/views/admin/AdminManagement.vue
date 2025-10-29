@@ -9,7 +9,6 @@ import TabPanel from 'primevue/tabpanel'
 
 import UserManagementTab from '@/components/admin/UserManagementTab.vue'
 import RoleManagementTab from '@/components/admin/RoleManagementTab.vue'
-import SystemStatsTab from '@/components/admin/SystemStatsTab.vue'
 import AuditLogsTab from '@/components/admin/AuditLogsTab.vue'
 import PermissionManagementTab from "@/components/admin/PermissionManagementTab.vue";
 import SubPage from "@/views/layer/SubPage.vue";
@@ -23,7 +22,6 @@ const tabs = [
   { label: '用户管理', icon: 'pi pi-users', permission: 'sys_user:view' },
   { label: '角色管理', icon: 'pi pi-shield', permission: 'sys_role:view' },
   { label: '权限管理', icon: 'pi pi-shield', permission: 'sys_user:view' },
-  { label: '系统统计', icon: 'pi pi-chart-bar', permission: 'sys_user:view' },
   { label: '审计日志', icon: 'pi pi-file-edit', permission: 'sys_user:view' }
 ]
 
@@ -70,9 +68,6 @@ onMounted(() => {
             <PermissionManagementTab/>
           </TabPanel>
           <TabPanel :value="3" v-if="authStore.hasPermission(tabs[3].permission)">
-            <SystemStatsTab/>
-          </TabPanel>
-          <TabPanel :value="4" v-if="authStore.hasPermission(tabs[4].permission)">
             <AuditLogsTab/>
           </TabPanel>
         </TabPanels>

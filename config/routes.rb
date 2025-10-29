@@ -4,6 +4,7 @@ Rails.application.routes.draw do
   require 'resque/scheduler/server'
 
   mount Resque::Server.new => "/resque"
+
   mount ActionCable.server => '/cable'
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
   # Can be used by load balancers and uptime monitors to verify that the app is live.
@@ -68,6 +69,16 @@ Rails.application.routes.draw do
     end
   end
 
+  # 系统配置管理路由（单例资源）
+  resource :config, only: [:show, :update], controller: 'config' do
+    post :test_email
+    post :test_wechat
+    post :test_adjust
+    post :test_facebook
+    get :facebook_auth_url
+    get :facebook_callback
+  end
+
   # 项目管理路由
   resources :projects do
     member do
@@ -100,8 +111,8 @@ Rails.application.routes.draw do
     end
   end
 
-  # 自动化日志详情（独立路由）
-  resources :automation_logs, only: [:show]
+  # 自动化日志管理（独立路由）
+  resources :automation_logs, only: [:index, :show]
 
   # 自动化规则管理（独立路由）
   resources :automation_rules, only: [:show, :update, :destroy] do
@@ -117,6 +128,11 @@ Rails.application.routes.draw do
   scope :facebook_auth do
     post :authorize, to: 'facebook_auth#authorize'
     get :callback, to: 'facebook_auth#callback'
+  end
+
+  # Facebook管理路由
+  scope :facebook do
+    post :sync_accounts, to: 'facebook#sync_accounts'
   end
 
   # 其他平台授权路由 (预留)
@@ -142,6 +158,14 @@ Rails.application.routes.draw do
         get :stats
         get :campaigns
         get :accounts
+      end
+    end
+
+    # 指标配置API
+    resources :metrics, only: [:index, :show] do
+      collection do
+        get :categories
+        post :calculate
       end
     end
   end

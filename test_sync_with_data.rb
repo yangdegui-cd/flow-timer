@@ -54,11 +54,11 @@ end
 
 # 开始完整的数据同步
 puts "\n=== 开始完整数据同步 ==="
-sync_service = FacebookAdsWideSyncService.new(ads_account)
+sync_service = FacebookReportService.new(ads_account)
 
 begin
   # 同步最近10天的数据，使用活动级别
-  result = sync_service.sync_to_wide_table(
+  result = sync_service.fetch_recent_data(
     date_range: {
       since: 10.days.ago.strftime("%Y-%m-%d"),
       until: Date.current.strftime("%Y-%m-%d")

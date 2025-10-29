@@ -16,11 +16,6 @@ class AdsAccount < ApplicationRecord
   validates :sync_status, inclusion: { in: %w[success error pending] }
   validates :sync_frequency, presence: true, numericality: { greater_than: 0 }
 
-  # 加密敏感字段 (暂时注释用于测试)
-  # encrypts :access_token
-  # encrypts :refresh_token
-  # encrypts :app_secret
-
   # JSON字段处理
   serialize :config, coder: JSON
 
@@ -28,7 +23,6 @@ class AdsAccount < ApplicationRecord
   scope :active, -> { where(active: true) }
   scope :by_platform, ->(platform) { joins(:ads_platform).where(ads_platforms: { slug: platform }) }
   scope :sync_ready, -> { where(active: true, account_status: 'active') }
-  scope :token_expired, -> { where('token_expires_at < ?', Time.current) }
 
   # 回调
   before_validation :set_defaults
@@ -37,14 +31,6 @@ class AdsAccount < ApplicationRecord
   # 实例方法
   def display_name
     "#{name} (#{ads_platform.name})"
-  end
-
-  def token_expired?
-    token_expires_at.present? && token_expires_at < Time.current
-  end
-
-  def needs_token_refresh?
-    token_expired? || (token_expires_at.present? && token_expires_at < 1.hour.from_now)
   end
 
   def sync_overdue?
@@ -110,7 +96,7 @@ class AdsAccount < ApplicationRecord
         sys_user: { only: [:id, :username, :email] }
       },
       except: [:access_token, :refresh_token, :app_secret],
-      methods: [:display_name, :token_expired?, :needs_token_refresh?, :sync_overdue?, :last_sync_status]
+      methods: [:display_name,  :sync_overdue?, :last_sync_status]
     )
   end
 

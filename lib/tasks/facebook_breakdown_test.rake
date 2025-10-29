@@ -33,7 +33,7 @@ namespace :facebook do
       puts "Breakdown: #{test[:breakdowns].join(', ')}" if test[:breakdowns].any?
 
       begin
-        sync_service = FacebookAdsWideSyncService.new(account)
+        sync_service = FacebookReportService.new(account)
 
         options = {
           date_range: {
@@ -48,7 +48,7 @@ namespace :facebook do
         # 记录测试前的数据数量
         before_count = AdsData.where(ads_account: account).count
 
-        result = sync_service.sync_to_wide_table(options)
+        result = sync_service.fetch_recent_data(options)
 
         # 记录测试后的数据数量
         after_count = AdsData.where(ads_account: account).count
@@ -121,7 +121,7 @@ namespace :facebook do
       puts "\n同步账户: #{account.name} (#{account.account_id})"
 
       begin
-        sync_service = FacebookAdsWideSyncService.new(account)
+        sync_service = FacebookReportService.new(account)
 
         # 使用最有效的breakdown组合
         options = {
@@ -134,7 +134,7 @@ namespace :facebook do
           clear_existing: true
         }
 
-        result = sync_service.sync_to_wide_table(options)
+        result = sync_service.fetch_recent_data(options)
 
         if result
           recent_count = AdsData.where(ads_account: account)

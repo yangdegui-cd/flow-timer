@@ -1,91 +1,3 @@
-<template>
-  <Dialog
-    v-model:visible="visible"
-    modal
-    header="创建角色"
-    class="w-full max-w-lg"
-  >
-    <form @submit.prevent="handleCreate" class="space-y-4">
-      <!-- 角色名称 -->
-      <div>
-        <FloatLabel variant="on">
-          <InputText
-            id="roleName"
-            v-model="form.name"
-            class="w-full"
-            :class="{ 'p-invalid': errors.name }"
-            required
-          />
-          <label for="roleName">角色名称*</label>
-        </FloatLabel>
-        <small v-if="errors.name" class="p-error">{{ errors.name }}</small>
-        <small class="text-surface-500 text-xs mt-1">角色的唯一标识，只能包含字母、数字和下划线</small>
-      </div>
-
-
-      <!-- 描述 -->
-      <div>
-        <FloatLabel variant="on">
-          <Textarea
-            id="description"
-            v-model="form.description"
-            class="w-full"
-            rows="3"
-            :class="{ 'p-invalid': errors.description }"
-          />
-          <label for="description">描述</label>
-        </FloatLabel>
-        <small v-if="errors.description" class="p-error">{{ errors.description }}</small>
-      </div>
-
-      <!-- 权限选择 -->
-      <div>
-        <label class="block text-sm font-medium text-surface-700 mb-2">权限设置*</label>
-        <div class="border border-surface-200 rounded-lg p-4 max-h-64 overflow-y-auto">
-          <div class="space-y-3">
-            <div v-for="(group, groupName) in permissionGroups" :key="groupName">
-              <div class="font-medium text-surface-700 mb-2">{{ groupName }}</div>
-              <div class="grid grid-cols-1 gap-2 ml-4">
-                <div
-                  v-for="permission in group"
-                  :key="permission.key"
-                  class="flex items-center space-x-2"
-                >
-                  <Checkbox
-                    :id="`permission-${permission.key}`"
-                    v-model="form.permissions"
-                    :value="permission.key"
-                    binary
-                  />
-                  <label :for="`permission-${permission.key}`" class="text-sm cursor-pointer">
-                    {{ permission.label }}
-                  </label>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <small v-if="errors.permissions" class="p-error">{{ errors.permissions }}</small>
-      </div>
-    </form>
-
-    <template #footer>
-      <div class="flex justify-end space-x-2">
-        <Button
-          label="取消"
-          @click="visible = false"
-          text
-        />
-        <Button
-          label="创建"
-          @click="handleCreate"
-          :loading="loading"
-        />
-      </div>
-    </template>
-  </Dialog>
-</template>
-
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { useToast } from 'primevue/usetoast'
@@ -189,7 +101,7 @@ const handleCreate = async () => {
       description: '',
       permissions: []
     })
-      errors.value = {}
+    errors.value = {}
 
     visible.value = false
     emit('success')
@@ -205,3 +117,91 @@ const handleCreate = async () => {
   }
 }
 </script>
+<template>
+  <Dialog
+    v-model:visible="visible"
+    modal
+    header="创建角色"
+    class="w-full max-w-lg"
+  >
+    <form @submit.prevent="handleCreate" class="space-y-4">
+      <!-- 角色名称 -->
+      <div>
+        <FloatLabel variant="on">
+          <InputText
+            id="roleName"
+            v-model="form.name"
+            class="w-full"
+            :class="{ 'p-invalid': errors.name }"
+            required
+          />
+          <label for="roleName">角色名称*</label>
+        </FloatLabel>
+        <small v-if="errors.name" class="p-error">{{ errors.name }}</small>
+        <small class="text-surface-500 text-xs mt-1">角色的唯一标识，只能包含字母、数字和下划线</small>
+      </div>
+
+
+      <!-- 描述 -->
+      <div>
+        <FloatLabel variant="on">
+          <Textarea
+            id="description"
+            v-model="form.description"
+            class="w-full"
+            rows="3"
+            :class="{ 'p-invalid': errors.description }"
+          />
+          <label for="description">描述</label>
+        </FloatLabel>
+        <small v-if="errors.description" class="p-error">{{ errors.description }}</small>
+      </div>
+
+      <!-- 权限选择 -->
+      <div>
+        <label class="block text-sm font-medium text-surface-700 mb-2">权限设置*</label>
+        <div class="border border-surface-200 rounded-lg p-4 max-h-64 overflow-y-auto">
+          <div class="space-y-3">
+            <div v-for="(group, groupName) in permissionGroups" :key="groupName">
+              <div class="font-medium text-surface-700 mb-2">{{ groupName }}</div>
+              <div class="grid grid-cols-1 gap-2 ml-4">
+                <div
+                  v-for="permission in group"
+                  :key="permission.key"
+                  class="flex items-center space-x-2"
+                >
+                  <Checkbox
+                    :id="`permission-${permission.key}`"
+                    v-model="form.permissions"
+                    :value="permission.key"
+                    binary
+                  />
+                  <label :for="`permission-${permission.key}`" class="text-sm cursor-pointer">
+                    {{ permission.label }}
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <small v-if="errors.permissions" class="p-error">{{ errors.permissions }}</small>
+      </div>
+    </form>
+
+    <template #footer>
+      <div class="flex justify-end space-x-2">
+        <Button
+          label="取消"
+          @click="visible = false"
+          text
+        />
+        <Button
+          label="创建"
+          @click="handleCreate"
+          :loading="loading"
+        />
+      </div>
+    </template>
+  </Dialog>
+</template>
+

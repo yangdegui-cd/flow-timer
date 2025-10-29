@@ -28,12 +28,15 @@ module FlowTimer
     # Middleware like session, flash, cookies can be added back manually.
     # Skip views, helpers and assets when generating a new resource.
     config.api_only = true
-    
+
     # Enable session middleware for OAuth support
     config.middleware.use ActionDispatch::Cookies
     config.middleware.use ActionDispatch::Session::CookieStore, key: '_flow_timer_session'
-    
+
     config.autoload_paths += %W(#{config.root}/app/models/nodes)
     config.autoload_paths += %W(#{config.root}/app/models/db_client)
+
+    config.hosts << "kamden-refusable-populously.ngrok-free.dev"
+    config.hosts << "kamden-refusable-populously.ngrok-free.dev"
   end
 end

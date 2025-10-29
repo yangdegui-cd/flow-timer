@@ -27,12 +27,6 @@ class CreateAdsPlatformsAndAccounts < ActiveRecord::Migration[7.1]
       t.references :project, null: false, foreign_key: true
       t.references :sys_user, null: false, foreign_key: true # 创建者
 
-      # 认证相关
-      t.text :access_token # 加密存储
-      t.text :refresh_token # 加密存储
-      t.datetime :token_expires_at
-      t.string :app_id
-      t.text :app_secret # 加密存储
 
       # 账户状态和配置
       t.string :account_status, default: 'active'

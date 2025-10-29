@@ -1,148 +1,3 @@
-<template>
-  <Dialog 
-    v-model:visible="visible" 
-    :modal="true" 
-    :closable="true"
-    :draggable="false"
-    class="w-full max-w-md"
-    header="新增权限"
-  >
-    <form @submit.prevent="handleSubmit" class="space-y-4">
-      <!-- 权限代码 -->
-      <div>
-        <label class="block text-sm font-medium text-surface-700 mb-2">
-          权限代码 *
-        </label>
-        <InputText
-          v-model="formData.code"
-          placeholder="例如: user:create"
-          :invalid="!!errors.code"
-          class="w-full"
-          @blur="validateField('code')"
-        />
-        <small v-if="errors.code" class="text-red-500">{{ errors.code }}</small>
-        <small class="text-surface-500">格式: 模块名:动作名，如 user:create</small>
-      </div>
-
-      <!-- 权限名称 -->
-      <div>
-        <label class="block text-sm font-medium text-surface-700 mb-2">
-          权限名称 *
-        </label>
-        <InputText
-          v-model="formData.name"
-          placeholder="例如: 创建用户"
-          :invalid="!!errors.name"
-          class="w-full"
-          @blur="validateField('name')"
-        />
-        <small v-if="errors.name" class="text-red-500">{{ errors.name }}</small>
-      </div>
-
-      <!-- 模块 -->
-      <div>
-        <label class="block text-sm font-medium text-surface-700 mb-2">
-          所属模块 *
-        </label>
-        <Select
-          v-model="formData.module"
-          :options="moduleOptions"
-          optionLabel="label"
-          optionValue="value"
-          placeholder="选择模块"
-          :invalid="!!errors.module"
-          class="w-full"
-          @change="validateField('module')"
-          editable
-        />
-        <small v-if="errors.module" class="text-red-500">{{ errors.module }}</small>
-      </div>
-
-      <!-- 动作类型 -->
-      <div>
-        <label class="block text-sm font-medium text-surface-700 mb-2">
-          动作类型 *
-        </label>
-        <Select
-          v-model="formData.action"
-          :options="actionOptions"
-          optionLabel="label"
-          optionValue="value"
-          placeholder="选择动作类型"
-          :invalid="!!errors.action"
-          class="w-full"
-          @change="validateField('action')"
-        />
-        <small v-if="errors.action" class="text-red-500">{{ errors.action }}</small>
-      </div>
-
-      <!-- 描述 -->
-      <div>
-        <label class="block text-sm font-medium text-surface-700 mb-2">
-          描述
-        </label>
-        <Textarea
-          v-model="formData.description"
-          placeholder="权限的详细描述"
-          rows="3"
-          class="w-full"
-        />
-      </div>
-
-      <!-- 资源标识 -->
-      <div>
-        <label class="block text-sm font-medium text-surface-700 mb-2">
-          资源标识
-        </label>
-        <InputText
-          v-model="formData.resource"
-          placeholder="例如: users, tasks"
-          class="w-full"
-        />
-        <small class="text-surface-500">可选，用于更精确的权限控制</small>
-      </div>
-
-      <!-- 排序 -->
-      <div>
-        <label class="block text-sm font-medium text-surface-700 mb-2">
-          排序
-        </label>
-        <InputNumber
-          v-model="formData.sort_order"
-          :min="0"
-          :max="999"
-          placeholder="0"
-          class="w-full"
-        />
-      </div>
-
-      <!-- 状态开关 -->
-      <div class="flex items-center justify-between">
-        <label class="text-sm font-medium text-surface-700">
-          启用权限
-        </label>
-        <ToggleSwitch v-model="formData.is_active" />
-      </div>
-    </form>
-
-    <template #footer>
-      <div class="flex justify-end space-x-3">
-        <Button 
-          label="取消" 
-          severity="secondary" 
-          @click="handleCancel"
-          :disabled="loading"
-        />
-        <Button 
-          label="创建" 
-          @click="handleSubmit"
-          :loading="loading"
-        />
-      </div>
-    </template>
-  </Dialog>
-</template>
-
 <script setup lang="ts">
 import { ref, reactive, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
@@ -322,7 +177,150 @@ const handleCancel = () => {
   visible.value = false
 }
 </script>
+<template>
+  <Dialog
+    v-model:visible="visible"
+    :modal="true"
+    :closable="true"
+    :draggable="false"
+    class="w-full max-w-md"
+    header="新增权限"
+  >
+    <form @submit.prevent="handleSubmit" class="space-y-4">
+      <!-- 权限代码 -->
+      <div>
+        <label class="block text-sm font-medium text-surface-700 mb-2">
+          权限代码 *
+        </label>
+        <InputText
+          v-model="formData.code"
+          placeholder="例如: user:create"
+          :invalid="!!errors.code"
+          class="w-full"
+          @blur="validateField('code')"
+        />
+        <small v-if="errors.code" class="text-red-500">{{ errors.code }}</small>
+        <small class="text-surface-500">格式: 模块名:动作名，如 user:create</small>
+      </div>
 
+      <!-- 权限名称 -->
+      <div>
+        <label class="block text-sm font-medium text-surface-700 mb-2">
+          权限名称 *
+        </label>
+        <InputText
+          v-model="formData.name"
+          placeholder="例如: 创建用户"
+          :invalid="!!errors.name"
+          class="w-full"
+          @blur="validateField('name')"
+        />
+        <small v-if="errors.name" class="text-red-500">{{ errors.name }}</small>
+      </div>
+
+      <!-- 模块 -->
+      <div>
+        <label class="block text-sm font-medium text-surface-700 mb-2">
+          所属模块 *
+        </label>
+        <Select
+          v-model="formData.module"
+          :options="moduleOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="选择模块"
+          :invalid="!!errors.module"
+          class="w-full"
+          @change="validateField('module')"
+          editable
+        />
+        <small v-if="errors.module" class="text-red-500">{{ errors.module }}</small>
+      </div>
+
+      <!-- 动作类型 -->
+      <div>
+        <label class="block text-sm font-medium text-surface-700 mb-2">
+          动作类型 *
+        </label>
+        <Select
+          v-model="formData.action"
+          :options="actionOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="选择动作类型"
+          :invalid="!!errors.action"
+          class="w-full"
+          @change="validateField('action')"
+        />
+        <small v-if="errors.action" class="text-red-500">{{ errors.action }}</small>
+      </div>
+
+      <!-- 描述 -->
+      <div>
+        <label class="block text-sm font-medium text-surface-700 mb-2">
+          描述
+        </label>
+        <Textarea
+          v-model="formData.description"
+          placeholder="权限的详细描述"
+          rows="3"
+          class="w-full"
+        />
+      </div>
+
+      <!-- 资源标识 -->
+      <div>
+        <label class="block text-sm font-medium text-surface-700 mb-2">
+          资源标识
+        </label>
+        <InputText
+          v-model="formData.resource"
+          placeholder="例如: users, tasks"
+          class="w-full"
+        />
+        <small class="text-surface-500">可选，用于更精确的权限控制</small>
+      </div>
+
+      <!-- 排序 -->
+      <div>
+        <label class="block text-sm font-medium text-surface-700 mb-2">
+          排序
+        </label>
+        <InputNumber
+          v-model="formData.sort_order"
+          :min="0"
+          :max="999"
+          placeholder="0"
+          class="w-full"
+        />
+      </div>
+
+      <!-- 状态开关 -->
+      <div class="flex items-center justify-between">
+        <label class="text-sm font-medium text-surface-700">
+          启用权限
+        </label>
+        <ToggleSwitch v-model="formData.is_active" />
+      </div>
+    </form>
+
+    <template #footer>
+      <div class="flex justify-end space-x-3">
+        <Button
+          label="取消"
+          severity="secondary"
+          @click="handleCancel"
+          :disabled="loading"
+        />
+        <Button
+          label="创建"
+          @click="handleSubmit"
+          :loading="loading"
+        />
+      </div>
+    </template>
+  </Dialog>
+</template>
 <style scoped>
 :deep(.p-dialog-header) {
   padding: 1.5rem 1.5rem 0;

@@ -1,0 +1,25 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  use_email_notification: false
+  smtp_server: MyString
+  smtp_port: 1
+  email_notification_email: MyString
+  email_notification_pwd: MyString
+  email_notification_name: MyString
+  email_notification_display_name: MyString
+  email_notification_use_tls: false
+  qy_wechat_notification_key: MyString
+  qy_wechat_notification_url: MyString
+
+two:
+  use_email_notification: false
+  smtp_server: MyString
+  smtp_port: 1
+  email_notification_email: MyString
+  email_notification_pwd: MyString
+  email_notification_name: MyString
+  email_notification_display_name: MyString
+  email_notification_use_tls: false
+  qy_wechat_notification_key: MyString
+  qy_wechat_notification_url: MyString

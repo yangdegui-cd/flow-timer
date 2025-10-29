@@ -5,10 +5,22 @@ class Api::AdsDataController < ApplicationController
   # 获取广告数据列表
   def index
     ads_account_id = params[:ads_account_id]
+    project_id = params[:project_id]
+    platform = params[:platform]
     page = params[:page]&.to_i || 1
     per_page = params[:per_page]&.to_i || 20
 
-    query = AdsData.includes(:ads_account, :project)
+    query = AdsMergeDatum.includes(:ads_account, :project)
+
+    # 筛选项目
+    if project_id.present?
+      query = query.where(project_id: project_id)
+    end
+
+    # 筛选平台
+    if platform.present?
+      query = query.where(platform: platform)
+    end
 
     # 筛选广告账户
     if ads_account_id.present?
@@ -23,6 +35,15 @@ class Api::AdsDataController < ApplicationController
     # 筛选活动
     if params[:campaign_name].present?
       query = query.where('campaign_name LIKE ?', "%#{params[:campaign_name]}%")
+    end
+
+    # 搜索
+    if params[:search].present?
+      search_term = "%#{params[:search]}%"
+      query = query.where(
+        'campaign_name LIKE ? OR adset_name LIKE ? OR ad_name LIKE ?',
+        search_term, search_term, search_term
+      )
     end
 
     # 排序
@@ -53,9 +74,22 @@ class Api::AdsDataController < ApplicationController
 
   # 获取数据统计
   def stats
+    project_id = params[:project_id]
+    platform = params[:platform]
     ads_account_id = params[:ads_account_id]
-    query = AdsData.all
+    query = AdsMergeDatum.all
 
+    # 筛选项目
+    if project_id.present?
+      query = query.where(project_id: project_id)
+    end
+
+    # 筛选平台
+    if platform.present?
+      query = query.where(platform: platform)
+    end
+
+    # 筛选广告账户
     if ads_account_id.present?
       query = query.where(ads_account_id: ads_account_id)
     end
@@ -63,16 +97,43 @@ class Api::AdsDataController < ApplicationController
     # 日期范围筛选
     if params[:start_date].present? && params[:end_date].present?
       query = query.where(date: params[:start_date]..params[:end_date])
-    else
-      # 默认最近30天
-      query = query.where(date: 30.days.ago..Date.current)
     end
+    # 如果没有指定日期范围，不添加日期过滤，显示所有数据
 
     # 核心指标汇总
-    total_stats = query.sum_metrics
+    total_stats = {
+      impressions: query.sum(:impressions) || 0,
+      clicks: query.sum(:clicks) || 0,
+      spend: query.sum(:spend) || 0,
+      reach: 0,  # ads_merge_data 视图中没有此字段
+      conversions: query.sum(:conversions) || 0,
+      conversion_value: query.sum(:revenue) || 0,
+      video_views: query.sum(:video_play_actions) || 0,
+      likes: query.sum(:page_likes) || 0,
+      comments: 0,  # ads_merge_data 视图中没有此字段
+      shares: query.sum(:post_shares) || 0,
+      saves: 0,  # ads_merge_data 视图中没有此字段
+      # Adjust数据
+      adjust_install: query.sum(:adjust_install) || 0,
+      adjust_spend: query.sum(:adjust_spend) || 0
+    }
 
     # 平均指标
-    avg_stats = AdsData.calculate_averages(query)
+    avg_stats = {
+      avg_ctr: total_stats[:impressions] > 0 ?
+               (total_stats[:clicks].to_f / total_stats[:impressions] * 100).round(4) : 0,
+      avg_cpm: total_stats[:impressions] > 0 ?
+               (total_stats[:spend].to_f / total_stats[:impressions] * 1000).round(4) : 0,
+      avg_cpc: total_stats[:clicks] > 0 ?
+               (total_stats[:spend].to_f / total_stats[:clicks]).round(4) : 0,
+      avg_conversion_rate: total_stats[:clicks] > 0 ?
+                          (total_stats[:conversions].to_f / total_stats[:clicks] * 100).round(4) : 0,
+      avg_cost_per_conversion: total_stats[:conversions] > 0 ?
+                              (total_stats[:spend].to_f / total_stats[:conversions]).round(4) : 0,
+      avg_roas: total_stats[:spend] > 0 ?
+               (total_stats[:conversion_value].to_f / total_stats[:spend]).round(4) : 0,
+      avg_frequency: 0
+    }
 
     # 按日统计
     daily_stats = query.group(:date)
@@ -86,7 +147,8 @@ class Api::AdsDataController < ApplicationController
                            clicks: date_data.sum(:clicks) || 0,
                            spend: date_data.sum(:spend) || 0,
                            conversions: date_data.sum(:conversions) || 0,
-                           reach: date_data.sum(:reach) || 0
+                           reach: 0,  # ads_merge_data 视图中没有此字段
+                           adjust_install: date_data.sum(:adjust_install) || 0
                          }
                        }.sort_by { |item| item[:date] }
 
@@ -142,8 +204,21 @@ class Api::AdsDataController < ApplicationController
   # 获取活动列表
   def campaigns
     ads_account_id = params[:ads_account_id]
-    query = AdsData.select(:campaign_name, :campaign_id).distinct
+    project_id = params[:project_id]
+    platform = params[:platform]
+    query = AdsMergeDatum.select(:campaign_name, :campaign_id).distinct
 
+    # 筛选项目
+    if project_id.present?
+      query = query.where(project_id: project_id)
+    end
+
+    # 筛选平台
+    if platform.present?
+      query = query.where(platform: platform)
+    end
+
+    # 筛选广告账户
     if ads_account_id.present?
       query = query.where(ads_account_id: ads_account_id)
     end
@@ -160,17 +235,31 @@ class Api::AdsDataController < ApplicationController
 
   # 获取广告账户列表
   def accounts
-    accounts = AdsAccount.active.includes(:ads_platform, :project)
-                        .map { |account|
-                          {
-                            id: account.id,
-                            name: account.name,
-                            account_id: account.account_id,
-                            platform: account.ads_platform.name,
-                            project: account.project.name,
-                            data_count: AdsData.where(ads_account: account).count
-                          }
-                        }
+    project_id = params[:project_id]
+    platform = params[:platform]
+
+    accounts_query = AdsAccount.active.includes(:ads_platform, :project)
+
+    # 筛选项目
+    if project_id.present?
+      accounts_query = accounts_query.where(project_id: project_id)
+    end
+
+    # 筛选平台
+    if platform.present?
+      accounts_query = accounts_query.joins(:ads_platform).where(ads_platforms: { slug: platform.downcase })
+    end
+
+    accounts = accounts_query.map { |account|
+      {
+        id: account.id,
+        name: account.name,
+        account_id: account.account_id,
+        platform: account.ads_platform.name,
+        project: account.project.name,
+        data_count: AdsMergeDatum.where(ads_account: account).count
+      }
+    }
 
     render json: accounts
   end

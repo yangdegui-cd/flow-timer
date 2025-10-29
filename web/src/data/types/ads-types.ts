@@ -412,3 +412,21 @@ export interface ExportOptions {
   granularity: TimeGranularity
   filters?: AdsDataFilters
 }
+
+export interface Metrics {
+  id: number;
+  name_cn: string;
+  name_en: string;
+  description?: string | null;
+  sql_expression: string;
+  unit?: string | null;
+  color?: string | null;
+  filter_max?: number | null;
+  filter_min?: number | null;
+  category?: string | null;
+  data_source?: 'platform' | 'adjust' | 'calculated' | string | null;
+  sort_order?: number;
+  is_active?: boolean;
+  created_at: string; // or Date if you plan to convert to Date object
+  updated_at: string; // or Date if you plan to convert to Date object
+}

@@ -51,7 +51,7 @@ namespace :facebook_resque do
 
     if account_id.present?
       puts "手动同步Facebook账户: #{account_id}"
-      Resque.enqueue(FacebookSyncJob, {
+      Resque.enqueue(FetchFacebookReportJob, {
         'account_id' => account_id,
         'hourly' => true,
         'since' => 3.days.ago.strftime('%Y-%m-%d'),
@@ -59,7 +59,7 @@ namespace :facebook_resque do
       })
     else
       puts "手动同步所有Facebook账户"
-      Resque.enqueue(FacebookSyncJob, {
+      Resque.enqueue(FetchFacebookReportJob, {
         'sync_all' => true,
         'hourly' => true,
         'since' => 3.days.ago.strftime('%Y-%m-%d'),

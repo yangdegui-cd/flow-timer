@@ -1,14 +1,15 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, defineComponent, h } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import PageHeader from '@/views/layer/PageHeader.vue'
-import AutomationLogsTab from './AutomationLogsTab.vue'
+import AutomationLogsTab from '../logs/AutomationLogsTab.vue'
+import AutomationRuleDialog from '@/views/_dialogs/AutomationRuleDialog.vue'
 import projectApi, { projectStatusOptions } from '@/api/project-api'
 import automationRuleApi, { type AutomationRule, type AutomationRuleFormData } from '@/api/automation-rule-api'
 import { adsAccountApi } from '@/api/ads-account-api'
-import userProjectApi, { type UserProject, type ProjectRole } from '@/api/user-project-api'
+import userProjectApi, { type ProjectRole, type UserProject } from '@/api/user-project-api'
 import userApi from '@/api/user-api'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
@@ -22,10 +23,11 @@ import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import Avatar from 'primevue/avatar'
 import MultiSelect from 'primevue/multiselect'
-import InputNumber from 'primevue/inputnumber'
 import Dialog from 'primevue/dialog'
-import Divider from 'primevue/divider'
 import { Project } from "@/data/types/project-types"
+import { actionOptions, getActionByValue } from '@/data/options/automation-actions'
+import { Metrics } from "@/data/types/ads-types";
+import metricsApi from "@/api/metrics-api";
 
 const route = useRoute()
 const router = useRouter()
@@ -45,6 +47,8 @@ const project = ref<Project>({
   start_date: '',
   status: 'active',
   active_ads_automate: true,
+  time_zone: 8,
+  adjust_game_token: '',
   sys_users: [],
   user_count: 0
 })
@@ -55,13 +59,16 @@ const form = ref({
   description: '',
   start_date: null as Date | null,
   status: 'active',
-  active_ads_automate: true
+  active_ads_automate: true,
+  time_zone: 8,
+  adjust_game_token: ''
 })
 
 // 广告账户数据
 const adsAccounts = ref([])
 const selectedAdsAccounts = ref([])
 const availableAdsAccounts = ref([])
+
 
 // 分配的用户
 const assignedUsers = ref<UserProject[]>([])
@@ -70,6 +77,7 @@ const selectedUsersForAssign = ref<any[]>([]) // 选中的用户对象数组
 const showUserDialog = ref(false)
 const currentUserRole = ref<ProjectRole>('member')
 const editingUserProject = ref<UserProject | null>(null)
+const metrics = ref<Metrics>([])
 
 // 角色选项
 const roleOptions = [
@@ -84,54 +92,7 @@ const loadingRules = ref(false)
 
 // 规则对话框
 const showRuleDialog = ref(false)
-const editingRule = ref<any>(null) // 正在编辑的规则
-const isRuleEditMode = ref(false) // 是否为规则编辑模式
-
-// 条件编辑对话框
-const showConditionDialog = ref(false)
-const targetGroup = ref<TriggerCondition | null>(null) // 要添加条件的目标组
-const editingCondition = ref<TriggerCondition | null>(null) // 正在编辑的条件
-const isConditionEditMode = ref(false) // 是否为条件编辑模式
-
-// 单个触发条件的结构
-interface TriggerCondition {
-  id: number
-  type: 'condition' | 'group' // 条件或条件组
-  metricType?: 'numeric' | 'string' // 指标类型（仅用于条件）
-  metric?: string // 触发指标（仅用于条件）
-  operator?: string // 操作符（仅用于条件）
-  value?: number | string // 触发值（仅用于条件）
-  logic?: 'AND' | 'OR' // 条件组的逻辑关系（仅用于条件组）
-  children?: TriggerCondition[] // 子条件（仅用于条件组）
-}
-
-const newRule = ref({
-  name: '',
-  // 时间参数
-  timeGranularity: 'hour', // hour | day
-  timeRange: 1,
-  // 触发条件（根条件组）
-  conditionGroup: {
-    id: Date.now(),
-    type: 'group' as const,
-    logic: 'AND' as 'AND' | 'OR',
-    children: [] as TriggerCondition[]
-  },
-  // 触发动作
-  action: 'pause_ad', // pause_ad, add_ad, increase_bid, decrease_bid, increase_budget, decrease_budget
-  actionValue: 0, // 对于百分比调整类动作，存储百分比值
-  enabled: true
-})
-
-// 当前正在编辑的条件
-const currentCondition = ref<TriggerCondition>({
-  id: Date.now(),
-  type: 'condition',
-  metricType: 'numeric',
-  metric: 'cpi',
-  operator: 'gt',
-  value: 0
-})
+const editingRule = ref<AutomationRule | null>(null) // 正在编辑的规则
 
 // 时间粒度选项
 const timeGranularityOptions = [
@@ -185,15 +146,7 @@ const conditionLogicOptions = [
   { label: '或 (OR)', value: 'OR' }
 ]
 
-// 触发动作选项
-const actionOptions = [
-  { label: '添加广告', value: 'add_ad', needsValue: false },
-  { label: '暂停广告', value: 'pause_ad', needsValue: false },
-  { label: '提升出价', value: 'increase_bid', needsValue: true, unit: '%' },
-  { label: '降低出价', value: 'decrease_bid', needsValue: true, unit: '%' },
-  { label: '提升预算', value: 'increase_budget', needsValue: true, unit: '%' },
-  { label: '降低预算', value: 'decrease_budget', needsValue: true, unit: '%' }
-]
+// 触发动作选项已从 @/data/options/automation-actions 导入
 
 // 模拟的已有数据（用于下拉选择）
 const availableAccountNames = ref(['账号A', '账号B', '账号C'])
@@ -201,52 +154,6 @@ const availableCampaignNames = ref(['春季推广', '夏季活动', '秋季促�
 const availableAdsetNames = ref(['年轻人群', '中年人群', '高收入人群'])
 const availableAdNames = ref(['创意A', '创意B', '创意C'])
 
-// 计算属性：当前条件选中的指标信息
-const currentSelectedMetric = computed(() => {
-  return allMetricOptions.find(m => m.value === currentCondition.value.metric)
-})
-
-// 计算属性：当前条件的操作符选项
-const currentOperatorOptions = computed(() => {
-  return currentCondition.value.metricType === 'numeric'
-    ? numericOperatorOptions
-    : stringOperatorOptions
-})
-
-// 计算属性：当前选中的动作信息
-const selectedAction = computed(() => {
-  return actionOptions.find(a => a.value === newRule.value.action)
-})
-
-// 计算属性：格式化的时间范围描述
-const timeRangeDescription = computed(() => {
-  const unit = newRule.value.timeGranularity === 'hour' ? '小时' : '天'
-  return `最近 ${newRule.value.timeRange} ${unit}`
-})
-
-// 计算属性：是否显示下拉选择（等于/不等于操作符）
-const shouldShowDropdown = computed(() => {
-  return currentCondition.value.metricType === 'string' &&
-    (currentCondition.value.operator === 'equals' || currentCondition.value.operator === 'not_equals')
-})
-
-// 计算属性：根据指标类型获取可选值
-const availableValues = computed(() => {
-  if (!shouldShowDropdown.value) return []
-
-  switch (currentCondition.value.metric) {
-    case 'account_name':
-      return availableAccountNames.value
-    case 'campaign_name':
-      return availableCampaignNames.value
-    case 'adset_name':
-      return availableAdsetNames.value
-    case 'ad_name':
-      return availableAdNames.value
-    default:
-      return []
-  }
-})
 
 // 加载项目详情
 const loadProject = () => {
@@ -265,7 +172,9 @@ const loadProject = () => {
       description: data.description || '',
       start_date: data.start_date ? new Date(data.start_date) : null,
       status: data.status,
-      active_ads_automate: data.active_ads_automate
+      active_ads_automate: data.active_ads_automate,
+      time_zone: data.time_zone || 8,
+      adjust_game_token: data.adjust_game_token || ''
     }
     // 加载关联数据
     Promise.all([
@@ -273,74 +182,89 @@ const loadProject = () => {
       loadProjectUsers(),
       loadAutomationRules()
     ])
-  }).catch(error => {
-    console.error('加载项目失败:', error)
-    toast.add({ severity: 'error', summary: '错误', detail: '加载项目失败', life: 3000 })
+  }).catch(err => {
+    console.err('加载项目失败:', err)
+    toast.add({ severity: 'err', summary: '错误', detail: '加载项目失败', life: 3000 })
   }).finally(() => {
     loading.value = false
   })
 }
 
 // 加载自动化规则
-const loadAutomationRules = async () => {
+const loadAutomationRules = () => {
   if (projectId.value === 'new') return
 
   loadingRules.value = true
-  try {
-    const rules = await automationRuleApi.getProjectRules(parseInt(projectId.value))
-    automationRules.value = rules
-  } catch (error: any) {
-    console.error('加载自动化规则失败:', error)
-    const message = error?.msg ?? '加载自动化规则失败'
-    toast.add({ severity: 'error', summary: '错误', detail: message, life: 3000 })
-  } finally {
-    loadingRules.value = false
-  }
+  automationRuleApi
+      .getProjectRules(parseInt(projectId.value))
+      .then(data => {
+        automationRules.value = data
+      })
+      .catch(err => {
+        console.err('加载自动化规则失败:', err)
+        toast.add({ severity: 'err', summary: '错误', detail: err?.msg ?? "加载自动化规则失败", life: 3000 })
+      })
+      .finally(() => loadingRules.value = false)
 }
 
 // 加载可用的广告账户（未绑定或已绑定到当前项目的账户）
-const loadAvailableAdsAccounts = async () => {
-  try {
-    const response = await adsAccountApi.getAvailableAccounts(parseInt(projectId.value))
-    availableAdsAccounts.value = response.data
-  } catch (error: any) {
-    console.error('加载可用广告账户失败:', error)
-    const message = error?.msg ?? '加载可用广告账户失败'
-    toast.add({ severity: 'error', summary: '错误', detail: message, life: 3000 })
-  }
+const loadAvailableAdsAccounts = () => {
+  adsAccountApi
+      .getAvailableAccounts(parseInt(projectId.value))
+      .then(data => {
+        availableAdsAccounts.value = data?.data ?? []
+      })
+      .catch(err => {
+        console.err('加载可用广告账户失败:', err)
+        toast.add({ severity: 'err', summary: '错误', detail: err?.msg ?? "加载可用广告账户失败", life: 3000 })
+      })
 }
 
-// 加载项目绑定的广告账户
-const loadProjectAdsAccounts = async () => {
-  try {
-    const response = await adsAccountApi.getAdsAccounts(parseInt(projectId.value))
-    adsAccounts.value = response.data || []
-  } catch (error: any) {
-    console.error('加载项目广告账户失败:', error)
-    const message = error?.msg ?? '加载项目广告账户失败'
-    toast.add({ severity: 'error', summary: '错误', detail: message, life: 3000 })
-  }
+const loadProjectAdsAccounts = () => {
+  adsAccountApi
+      .getAdsAccounts(parseInt(projectId.value))
+      .then(data => {
+        adsAccounts.value = data?.data ?? []
+        loadAvailableAdsAccounts()
+      })
+      .catch(err => {
+        console.err('加载项目广告账户失败:', err)
+        toast.add({ severity: 'err', summary: '错误', detail: err?.msg ?? '加载项目广告账户失败', life: 3000 })
+      })
 }
 
 // 加载项目分配的用户
 const loadProjectUsers = async () => {
-  try {
-    const users = await userProjectApi.getProjectUsers(parseInt(projectId.value))
-    assignedUsers.value = users
-  } catch (error: any) {
-    console.error('加载项目用户失败:', error)
-    const message = error?.msg ?? '加载项目用户失败'
-    toast.add({ severity: 'error', summary: '错误', detail: message, life: 3000 })
-  }
+  userProjectApi
+      .getProjectUsers(parseInt(projectId.value))
+      .then(data => {
+        assignedUsers.value = data ?? []
+      })
+      .catch(err => {
+        console.err('加载项目用户失败:', err)
+        toast.add({ severity: 'err', summary: '错误', detail: err?.msg ?? '加载项目用户失败', life: 3000 })
+      })
+}
+
+const loadMetrics = () => {
+  metricsApi.list()
+      .then(res => {
+        metrics.value = res
+      })
+      .catch(err => {
+        toast.add({ severity: 'err', summary: '错误', detail: err.msg, life: 3000 })
+      })
 }
 
 // 加载可用用户（所有系统用户）
 const loadAvailableUsers = async () => {
-  userApi.list().then(res => {
-    availableUsers.value = res.users
-  }).catch(res => {
-    toast.add({ severity: 'error', summary: '加载可用用户失败', detail: res.data.msg, life: 3000 })
-  })
+  userApi.list()
+      .then(res => {
+        availableUsers.value = res.users
+      })
+      .catch(res => {
+        toast.add({ severity: 'err', summary: '加载可用用户失败', detail: res.data.msg, life: 3000 })
+      })
 }
 
 // 保存项目
@@ -355,9 +279,9 @@ const saveProject = () => {
     projectApi.create(formData).then(newProject => {
       toast.add({ severity: 'success', summary: '成功', detail: '项目创建成功', life: 3000 })
       router.push(`/project/${newProject.id}`)
-    }).catch(error => {
-      console.error('保存项目失败:', error)
-      toast.add({ severity: 'error', summary: '错误', detail: '保存项目失败', life: 3000 })
+    }).catch(err => {
+      console.err('保存项目失败:', err)
+      toast.add({ severity: 'err', summary: '错误', detail: '保存项目失败', life: 3000 })
     }).finally(() => {
       saving.value = false
     })
@@ -366,9 +290,9 @@ const saveProject = () => {
       loadProject()
       isEditMode.value = false
       toast.add({ severity: 'success', summary: '成功', detail: '项目更新成功', life: 3000 })
-    }).catch(error => {
-      console.error('保存项目失败:', error)
-      toast.add({ severity: 'error', summary: '错误', detail: '保存项目失败', life: 3000 })
+    }).catch(err => {
+      console.err('保存项目失败:', err)
+      toast.add({ severity: 'err', summary: '错误', detail: '保存项目失败', life: 3000 })
     }).finally(() => {
       saving.value = false
     })
@@ -389,7 +313,9 @@ const cancelEdit = () => {
     description: project.value.description || '',
     start_date: project.value.start_date ? new Date(project.value.start_date) : null,
     status: project.value.status,
-    active_ads_automate: project.value.active_ads_automate
+    active_ads_automate: project.value.active_ads_automate,
+    time_zone: project.value.time_zone || 8,
+    adjust_game_token: project.value.adjust_game_token || ''
   }
 }
 
@@ -410,10 +336,10 @@ const bindAdsAccounts = async () => {
     selectedAdsAccounts.value = []
     await loadProjectAdsAccounts()
     await loadAvailableAdsAccounts()
-  } catch (error: any) {
-    console.error('绑定广告账户失败:', error)
-    const message = error?.msg ?? '绑定失败'
-    toast.add({ severity: 'error', summary: '错误', detail: message, life: 3000 })
+  } catch (err: any) {
+    console.err('绑定广告账户失败:', err)
+    const message = err?.msg ?? '绑定失败'
+    toast.add({ severity: 'err', summary: '错误', detail: message, life: 3000 })
   }
 }
 
@@ -431,10 +357,10 @@ const unbindAdsAccount = async (accountId: number) => {
         toast.add({ severity: 'success', summary: '成功', detail: '广告账户解绑成功', life: 3000 })
         await loadProjectAdsAccounts()
         await loadAvailableAdsAccounts()
-      } catch (error: any) {
-        console.error('解绑广告账户失败:', error)
-        const message = error?.msg ?? '解绑失败'
-        toast.add({ severity: 'error', summary: '错误', detail: message, life: 3000 })
+      } catch (err: any) {
+        console.err('解绑广告账户失败:', err)
+        const message = err?.msg ?? '解绑失败'
+        toast.add({ severity: 'err', summary: '错误', detail: message, life: 3000 })
       }
     }
   })
@@ -468,10 +394,10 @@ const assignUsers = async () => {
     showUserDialog.value = false
     selectedUsersForAssign.value = []
     await loadProjectUsers()
-  } catch (error: any) {
-    console.error('分配用户失败:', error)
-    const message = error?.msg ?? '分配失败'
-    toast.add({ severity: 'error', summary: '错误', detail: message, life: 3000 })
+  } catch (err: any) {
+    console.err('分配用户失败:', err)
+    const message = err?.msg ?? '分配失败'
+    toast.add({ severity: 'err', summary: '错误', detail: message, life: 3000 })
   }
 }
 
@@ -481,10 +407,10 @@ const updateUserRole = async (userProject: UserProject, newRole: ProjectRole) =>
     await userProjectApi.updateUserRole(userProject.id, newRole)
     toast.add({ severity: 'success', summary: '成功', detail: '角色更新成功', life: 3000 })
     await loadProjectUsers()
-  } catch (error: any) {
-    console.error('更新角色失败:', error)
-    const message = error?.msg ?? '更新失败'
-    toast.add({ severity: 'error', summary: '错误', detail: message, life: 3000 })
+  } catch (err: any) {
+    console.err('更新角色失败:', err)
+    const message = err?.msg ?? '更新失败'
+    toast.add({ severity: 'err', summary: '错误', detail: message, life: 3000 })
   }
 }
 
@@ -501,10 +427,10 @@ const removeUser = async (userProject: UserProject) => {
         await userProjectApi.removeUser(userProject.id)
         toast.add({ severity: 'success', summary: '成功', detail: '用户移除成功', life: 3000 })
         await loadProjectUsers()
-      } catch (error: any) {
-        console.error('移除用户失败:', error)
-        const message = error?.msg ?? '移除失败'
-        toast.add({ severity: 'error', summary: '错误', detail: message, life: 3000 })
+      } catch (err: any) {
+        console.err('移除用户失败:', err)
+        const message = err?.msg ?? '移除失败'
+        toast.add({ severity: 'err', summary: '错误', detail: message, life: 3000 })
       }
     }
   })
@@ -524,193 +450,8 @@ const getRoleSeverity = (role: ProjectRole) => {
   }
 }
 
-// 当指标类型改变时，更新操作符和值
-const onMetricTypeChange = (newType: 'numeric' | 'string') => {
-  currentCondition.value.metricType = newType
-  // 重置操作符
-  if (newType === 'numeric') {
-    currentCondition.value.metric = 'cpi'
-    currentCondition.value.operator = 'gt'
-    currentCondition.value.value = 0
-  } else {
-    currentCondition.value.metric = 'account_name'
-    currentCondition.value.operator = 'contains'
-    currentCondition.value.value = ''
-  }
-}
-
-// 当指标改变时，重置操作符
-const onMetricChange = () => {
-  const metric = allMetricOptions.find(m => m.value === currentCondition.value.metric)
-  if (metric?.type === 'numeric') {
-    currentCondition.value.metricType = 'numeric'
-    currentCondition.value.operator = 'gt'
-    currentCondition.value.value = 0
-  } else {
-    currentCondition.value.metricType = 'string'
-    currentCondition.value.operator = 'contains'
-    currentCondition.value.value = ''
-  }
-}
-
-// 添加条件到根条件组
-const addConditionToRoot = () => {
-  // 验证当前条件
-  if (currentCondition.value.metricType === 'numeric') {
-    const metric = numericMetricOptions.find(m => m.value === currentCondition.value.metric)
-    const val = Number(currentCondition.value.value)
-    if (metric && (val < metric.min || val > metric.max)) {
-      toast.add({
-        severity: 'warn',
-        summary: '提示',
-        detail: `${metric.label}的值应该在 ${metric.min} 到 ${metric.max} 之间`,
-        life: 3000
-      })
-      return
-    }
-  } else {
-    if (!currentCondition.value.value || currentCondition.value.value === '') {
-      toast.add({ severity: 'warn', summary: '提示', detail: '请输入或选择条件值', life: 3000 })
-      return
-    }
-  }
-
-  // 添加条件到根条件组
-  newRule.value.conditionGroup.children.push({ ...currentCondition.value })
-
-  // 重置当前条件
-  currentCondition.value = {
-    id: Date.now() + 1,
-    type: 'condition',
-    metricType: 'numeric',
-    metric: 'cpi',
-    operator: 'gt',
-    value: 0
-  }
-
-  toast.add({ severity: 'success', summary: '成功', detail: '条件添加成功', life: 2000 })
-}
-
-// 添加条件组到根条件组
-const addGroupToRoot = () => {
-  newRule.value.conditionGroup.children.push({
-    id: Date.now(),
-    type: 'group',
-    logic: 'AND',
-    children: []
-  })
-  toast.add({ severity: 'success', summary: '成功', detail: '条件组添加成功', life: 2000 })
-}
-
-// 打开条件编辑对话框
-const openConditionDialog = (group: TriggerCondition) => {
-  targetGroup.value = group
-  // 重置当前条件
-  currentCondition.value = {
-    id: Date.now(),
-    type: 'condition',
-    metricType: 'numeric',
-    metric: 'cpi',
-    operator: 'gt',
-    value: 0
-  }
-  showConditionDialog.value = true
-}
-
-// 添加条件到指定条件组
-const addConditionToGroup = (group: TriggerCondition) => {
-  openConditionDialog(group)
-}
-
-// 编辑条件
-const editCondition = (condition: TriggerCondition) => {
-  isConditionEditMode.value = true
-  editingCondition.value = condition
-  // 复制条件到当前编辑对象
-  currentCondition.value = {
-    id: condition.id,
-    type: condition.type,
-    metricType: condition.metricType,
-    metric: condition.metric,
-    operator: condition.operator,
-    value: condition.value
-  }
-  showConditionDialog.value = true
-}
-
-// 确认添加条件
-const confirmAddCondition = () => {
-  // 验证当前条件
-  if (currentCondition.value.metricType === 'numeric') {
-    const metric = numericMetricOptions.find(m => m.value === currentCondition.value.metric)
-    const val = Number(currentCondition.value.value)
-    if (metric && (val < metric.min || val > metric.max)) {
-      toast.add({
-        severity: 'warn',
-        summary: '提示',
-        detail: `${metric.label}的值应该在 ${metric.min} 到 ${metric.max} 之间`,
-        life: 3000
-      })
-      return
-    }
-  } else {
-    if (!currentCondition.value.value || currentCondition.value.value === '') {
-      toast.add({ severity: 'warn', summary: '提示', detail: '请输入或选择条件值', life: 3000 })
-      return
-    }
-  }
-
-  if (isConditionEditMode.value && editingCondition.value) {
-    // 编辑模式：更新现有条件
-    editingCondition.value.metricType = currentCondition.value.metricType
-    editingCondition.value.metric = currentCondition.value.metric
-    editingCondition.value.operator = currentCondition.value.operator
-    editingCondition.value.value = currentCondition.value.value
-    // 强制更新
-    newRule.value = { ...newRule.value }
-    toast.add({ severity: 'success', summary: '成功', detail: '条件更新成功', life: 2000 })
-  } else {
-    // 添加模式：添加新条件
-    if (!targetGroup.value) return
-    if (!targetGroup.value.children) targetGroup.value.children = []
-    targetGroup.value.children.push({ ...currentCondition.value })
-    toast.add({ severity: 'success', summary: '成功', detail: '条件添加成功', life: 2000 })
-  }
-
-  showConditionDialog.value = false
-  isConditionEditMode.value = false
-  editingCondition.value = null
-}
-
-// 从条件组中删除条件或子条件组
-const removeFromGroup = (group: TriggerCondition, itemId: number) => {
-  if (group.children) {
-    group.children = group.children.filter(c => c.id !== itemId)
-  }
-}
-
-// 递归删除条件或条件组
-const removeConditionOrGroup = (conditionId: number, parent: TriggerCondition = newRule.value.conditionGroup) => {
-  if (parent.children) {
-    const index = parent.children.findIndex(c => c.id === conditionId)
-    if (index !== -1) {
-      parent.children.splice(index, 1)
-      toast.add({ severity: 'info', summary: '提示', detail: '已删除', life: 2000 })
-      return true
-    }
-
-    // 递归查找子条件组
-    for (const child of parent.children) {
-      if (child.type === 'group' && removeConditionOrGroup(conditionId, child)) {
-        return true
-      }
-    }
-  }
-  return false
-}
-
 // 格式化单个条件显示
-const formatConditionText = (condition: TriggerCondition): string => {
+const formatConditionText = (condition: any): string => {
   if (condition.type === 'group') {
     return '' // 条件组不需要格式化文本
   }
@@ -731,12 +472,12 @@ const formatConditionText = (condition: TriggerCondition): string => {
 }
 
 // 递归格式化条件组显示（用于最终规则描述）
-const formatConditionGroupText = (group: TriggerCondition, depth: number = 0): string => {
+const formatConditionGroupText = (group: any, depth: number = 0): string => {
   if (!group.children || group.children.length === 0) {
     return ''
   }
 
-  const texts = group.children.map(child => {
+  const texts = group.children.map((child: any) => {
     if (child.type === 'condition') {
       return formatConditionText(child)
     } else {
@@ -744,7 +485,7 @@ const formatConditionGroupText = (group: TriggerCondition, depth: number = 0): s
       const subText = formatConditionGroupText(child, depth + 1)
       return depth > 0 ? `(${subText})` : subText
     }
-  }).filter(t => t)
+  }).filter((t: string) => t)
 
   const logicSymbol = group.logic === 'AND' ? ' 且 ' : ' 或 '
   return texts.join(logicSymbol)
@@ -752,97 +493,22 @@ const formatConditionGroupText = (group: TriggerCondition, depth: number = 0): s
 
 // 打开添加规则对话框
 const openRuleDialog = () => {
-  isRuleEditMode.value = false
   editingRule.value = null
-  resetRuleForm()
   showRuleDialog.value = true
 }
 
 // 打开编辑规则对话框
 const openEditRuleDialog = (rule: AutomationRule) => {
-  isRuleEditMode.value = true
   editingRule.value = rule
-
-  // 复制规则数据到编辑表单（处理后端返回的snake_case格式）
-  newRule.value = {
-    name: rule.name,
-    timeGranularity: rule.time_granularity || 'hour',
-    timeRange: rule.time_range || 1,
-    conditionGroup: rule.condition_group ? JSON.parse(JSON.stringify(rule.condition_group)) : {
-      id: Date.now(),
-      type: 'group',
-      logic: 'AND',
-      children: []
-    },
-    action: rule.action || 'pause_ad',
-    actionValue: rule.action_value || 0,
-    enabled: rule.enabled
-  }
-
   showRuleDialog.value = true
 }
 
-// 重置规则表单
-const resetRuleForm = () => {
-  newRule.value = {
-    name: '',
-    timeGranularity: 'hour',
-    timeRange: 1,
-    conditionGroup: {
-      id: Date.now(),
-      type: 'group',
-      logic: 'AND',
-      children: []
-    },
-    action: 'pause_ad',
-    actionValue: 0,
-    enabled: true
-  }
-
-  currentCondition.value = {
-    id: Date.now() + 1,
-    type: 'condition',
-    metricType: 'numeric',
-    metric: 'cpi',
-    operator: 'gt',
-    value: 0
-  }
-}
-
-// 添加自动化规则
-const addAutomationRule = async () => {
-  if (!newRule.value.name) {
-    toast.add({ severity: 'warn', summary: '提示', detail: '请输入规则名称', life: 3000 })
-    return
-  }
-
-  // 验证至少有一个条件
-  if (!newRule.value.conditionGroup.children || newRule.value.conditionGroup.children.length === 0) {
-    toast.add({ severity: 'warn', summary: '提示', detail: '请至少添加一个触发条件', life: 3000 })
-    return
-  }
-
-  // 验证动作值（如果需要）
-  if (selectedAction.value?.needsValue && (!newRule.value.actionValue || newRule.value.actionValue <= 0)) {
-    toast.add({ severity: 'warn', summary: '提示', detail: '请输入有效的百分比值', life: 3000 })
-    return
-  }
-
+// 保存自动化规则（从对话框触发）
+const handleRuleSaved = async (ruleData: AutomationRuleFormData) => {
   saving.value = true
 
   try {
-    // 准备API数据
-    const ruleData: AutomationRuleFormData = {
-      name: newRule.value.name,
-      time_granularity: newRule.value.timeGranularity,
-      time_range: newRule.value.timeRange,
-      condition_group: newRule.value.conditionGroup,
-      action: newRule.value.action,
-      action_value: newRule.value.actionValue,
-      enabled: newRule.value.enabled
-    }
-
-    if (isRuleEditMode.value && editingRule.value) {
+    if (editingRule.value) {
       // 编辑模式：更新现有规则
       await automationRuleApi.updateRule(editingRule.value.id, ruleData)
       toast.add({ severity: 'success', summary: '成功', detail: '规则更新成功', life: 3000 })
@@ -856,12 +522,11 @@ const addAutomationRule = async () => {
     await loadAutomationRules()
 
     showRuleDialog.value = false
-    isRuleEditMode.value = false
     editingRule.value = null
-  } catch (error: any) {
-    console.error('保存规则失败:', error)
-    const defaultMessage = isRuleEditMode.value ? '更新规则失败' : '添加规则失败'
-    const message = error?.msg ?? defaultMessage
+  } catch (err: any) {
+    console.error('保存规则失败:', err)
+    const defaultMessage = editingRule.value ? '更新规则失败' : '添加规则失败'
+    const message = err?.msg ?? defaultMessage
     toast.add({
       severity: 'error',
       summary: '错误',
@@ -887,10 +552,10 @@ const deleteRule = async (ruleId: number) => {
         toast.add({ severity: 'success', summary: '成功', detail: '规则删除成功', life: 3000 })
         // 重新加载规则列表
         await loadAutomationRules()
-      } catch (error: any) {
-        console.error('删除规则失败:', error)
-        const message = error?.msg ?? '删除规则失败'
-        toast.add({ severity: 'error', summary: '错误', detail: message, life: 3000 })
+      } catch (err: any) {
+        console.err('删除规则失败:', err)
+        const message = err?.msg ?? '删除规则失败'
+        toast.add({ severity: 'err', summary: '错误', detail: message, life: 3000 })
       }
     }
   })
@@ -907,12 +572,12 @@ const toggleRule = async (rule: AutomationRule) => {
       detail: `规则已${rule.enabled ? '启用' : '禁用'}`,
       life: 3000
     })
-  } catch (error: any) {
-    console.error('切换规则状态失败:', error)
+  } catch (err: any) {
+    console.err('切换规则状态失败:', err)
     // 恢复之前的状态
     rule.enabled = previousState
-    const message = error?.msg ?? '切换规则状态失败'
-    toast.add({ severity: 'error', summary: '错误', detail: message, life: 3000 })
+    const message = err?.msg ?? '切换规则状态失败'
+    toast.add({ severity: 'err', summary: '错误', detail: message, life: 3000 })
   }
 }
 
@@ -930,7 +595,7 @@ const formattedRules = computed(() => {
     const conditionText = `最近${rule.time_range}${timeUnit}: ${formatConditionGroupText(rule.condition_group)}`
 
     // 格式化动作文本
-    const actionOption = actionOptions.find(a => a.value === rule.action)
+    const actionOption = getActionByValue(rule.action)
     let actionText = actionOption?.label || rule.action
     if (actionOption?.needsValue && rule.action_value) {
       actionText += ` ${rule.action_value}%`
@@ -950,181 +615,9 @@ onMounted(async () => {
     loadAvailableAdsAccounts(),
     loadProjectAdsAccounts(),
     loadAvailableUsers(),
-    loadProjectUsers()
+    loadProjectUsers(),
+    loadMetrics()
   ])
-})
-
-// 切换条件组逻辑（不使用ref，直接修改对象）
-const toggleGroupLogic = (group: TriggerCondition) => {
-  if (group.logic === 'AND') {
-    group.logic = 'OR'
-  } else {
-    group.logic = 'AND'
-  }
-  // 强制更新
-  newRule.value = { ...newRule.value }
-}
-
-// 条件组显示组件（递归）
-const ConditionGroupDisplay = defineComponent({
-  name: 'ConditionGroupDisplay',
-  props: {
-    group: {
-      type: Object as () => TriggerCondition,
-      required: true
-    },
-    level: {
-      type: Number,
-      default: 0
-    }
-  },
-  emits: ['remove', 'addCondition', 'addGroup', 'edit'],
-  setup(props, { emit }) {
-    // 渲染单个条件
-    const renderCondition = (condition: TriggerCondition, index: number, parentGroup: TriggerCondition, showLogic: boolean = false) => {
-      const metric = allMetricOptions.find(m => m.value === condition.metric)
-      const operator = [...numericOperatorOptions, ...stringOperatorOptions].find(o => o.value === condition.operator)
-
-      let valueText = ''
-      if (condition.metricType === 'numeric') {
-        const numMetric = numericMetricOptions.find(m => m.value === condition.metric)
-        valueText = `${condition.value}${numMetric?.unit || ''}`
-      } else {
-        valueText = `"${condition.value}"`
-      }
-
-      const parentLogic = parentGroup.logic || 'AND'
-
-      return h('div', { class: 'flex items-center gap-2 py-1', key: condition.id }, [
-        // 逻辑标签（只在需要时显示）
-        showLogic ? h('div', {
-          class: `px-2 py-1 rounded text-xs cursor-pointer w-9 text-center bg-gray-100 text-gray-600 hover:bg-gray-200`,
-          onClick: () => toggleGroupLogic(parentGroup)
-        }, parentLogic === 'AND' ? '或' : '且') : h('div', { class: 'w-9' }), // 占位
-
-        // adid按钮（点击可编辑条件）
-        h(Button, {
-          icon: 'pi pi-filter-slash',
-          size: 'small',
-          severity: 'secondary',
-          outlined: true,
-          class: 'h-7 w-16 text-xs p-0 flex-shrink-0',
-          onClick: () => emit('edit', condition)
-        }),
-
-        // 条件显示
-        h('div', {
-          class: 'flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded text-sm flex-1'
-        }, [
-          h('span', { class: 'text-gray-700' }, `${metric?.label} ${operator?.symbol} ${valueText}`)
-        ]),
-
-        // 删除按钮（始终显示）
-        h(Button, {
-          icon: 'pi pi-times',
-          size: 'small',
-          severity: 'secondary',
-          text: true,
-          class: 'h-6 w-6 p-0',
-          onClick: () => emit('remove', condition.id)
-        })
-      ])
-    }
-
-    // 渲染条件组
-    const renderGroup = (group: TriggerCondition, level: number, parentGroup?: TriggerCondition, indexInParent: number = 0): any => {
-      const hasChildren = group.children && group.children.length > 0
-
-      const elements: any[] = []
-
-      // 条件组容器
-      const groupContent = h('div', {
-        class: level > 0 ? 'relative' : ''
-      }, [
-        // 左侧竖线
-        level > 0 && h('div', {
-          class: 'absolute top-0 bottom-0 w-px bg-gray-300'
-        }),
-
-        // 内容容器
-        h('div', {
-          class: level > 0 ? 'pl-2' : ''
-        }, [
-          // 子条件和子条件组
-          ...(hasChildren ? (() => {
-            // 判断是否有多个子项（条件或条件组）
-            const hasMultipleChildren = group.children!.length > 1
-
-            return group.children!.map((child, index) => {
-              if (child.type === 'condition') {
-                // 只在第一项处且有多个子项时显示逻辑符号
-                const showLogic = hasMultipleChildren && index === 0
-                return renderCondition(child, index, group, showLogic)
-              } else {
-                // 递归渲染子条件组
-                // 只在第一项处且有多个子项时显示逻辑操作符
-                const showLogic = hasMultipleChildren && index === 0
-                return h('div', { key: child.id, class: 'flex items-start gap-2 py-1' }, [
-                  // 左侧逻辑操作符（只在第一项显示）
-                  showLogic ? (() => {
-                    const parentLogic = group.logic || 'AND'
-                    return h('div', {
-                      class: `px-2 py-1 rounded text-xs cursor-pointer w-9 text-center bg-gray-100 text-gray-600 hover:bg-gray-200 flex-shrink-0`,
-                      onClick: () => toggleGroupLogic(group)
-                    }, parentLogic === 'AND' ? '或' : '且')
-                  })() : h('div', { class: 'w-9 flex-shrink-0' }),
-                  // 子条件组内容
-                  h('div', { class: 'flex-1' }, [
-                    renderGroup(child, level + 1, group, index)
-                  ])
-                ])
-              }
-            })
-          })() : [
-            h('div', { class: 'text-sm text-gray-400 py-2 ml-11' }, '暂无条件')
-          ]),
-
-          // 底部添加按钮（和删除组按钮放在一起）
-          h('div', { class: 'flex gap-2 py-2 ml-11' }, [
-            h(Button, {
-              icon: 'pi pi-plus',
-              label: '添加条件',
-              size: 'small',
-              severity: 'secondary',
-              outlined: true,
-              class: 'h-8 px-4 text-sm',
-              onClick: () => emit('addCondition', group)
-            }),
-            level === 0 && h(Button, {
-              icon: 'pi pi-sitemap',
-              label: '添加条件组',
-              size: 'small',
-              severity: 'secondary',
-              outlined: true,
-              class: 'h-8 px-4 text-sm',
-              onClick: () => emit('addGroup')
-            }),
-            // 如果是嵌套组（level > 0），显示删除组按钮
-            level > 0 && h(Button, {
-              icon: 'pi pi-trash',
-              label: '删除组',
-              size: 'small',
-              severity: 'secondary',
-              text: true,
-              class: 'h-8 text-sm',
-              onClick: () => emit('remove', group.id)
-            })
-          ])
-        ])
-      ])
-
-      elements.push(groupContent)
-
-      return h('div', elements)
-    }
-
-    return () => renderGroup(props.group, props.level)
-  }
 })
 </script>
 
@@ -1250,6 +743,34 @@ const ConditionGroupDisplay = defineComponent({
               </div>
             </div>
 
+            <div class="space-y-2">
+              <label class="text-sm font-medium text-gray-700">时区(UTC)</label>
+              <InputNumber
+                  v-if="isEditMode"
+                  v-model="form.time_zone"
+                  :min="-12"
+                  :max="14"
+                  placeholder="如: 8 表示 UTC+8"
+                  class="w-full"
+              />
+              <div v-else class="p-2 bg-gray-50 rounded">
+                {{ project.time_zone >= 0 ? `UTC+${project.time_zone}` : `UTC${project.time_zone}` }}
+              </div>
+            </div>
+
+            <div class="space-y-2">
+              <label class="text-sm font-medium text-gray-700">Adjust Game Token</label>
+              <InputText
+                  v-if="isEditMode"
+                  v-model="form.adjust_game_token"
+                  placeholder="请输入 Adjust Game Token"
+                  class="w-full"
+              />
+              <div v-else class="p-2 bg-gray-50 rounded font-mono text-sm">
+                {{ project.adjust_game_token || '未配置' }}
+              </div>
+            </div>
+
             <div class="md:col-span-2 space-y-2">
               <label class="text-sm font-medium text-gray-700">描述</label>
               <Textarea
@@ -1319,8 +840,8 @@ const ConditionGroupDisplay = defineComponent({
               <Column field="account_status" header="状态">
                 <template #body="{ data }">
                   <Tag
-                    :value="data.account_status === 'active' ? '活跃' : data.account_status === 'suspended' ? '暂停' : '关闭'"
-                    :severity="data.account_status === 'active' ? 'success' : 'warning'"
+                      :value="data.account_status === 'active' ? '活跃' : data.account_status === 'suspended' ? '暂停' : '关闭'"
+                      :severity="data.account_status === 'active' ? 'success' : 'warning'"
                   />
                 </template>
               </Column>
@@ -1496,7 +1017,7 @@ const ConditionGroupDisplay = defineComponent({
                   <div class="font-medium">{{ role.label }}</div>
                   <div class="text-sm text-gray-500">{{ role.description }}</div>
                 </div>
-                <Tag :value="role.label" :severity="getRoleSeverity(role.value)" />
+                <Tag :value="role.label" :severity="getRoleSeverity(role.value)"/>
               </div>
             </div>
           </div>
@@ -1598,286 +1119,26 @@ const ConditionGroupDisplay = defineComponent({
           </div>
         </template>
         <template #content>
-          <AutomationLogsTab :projectId="parseInt(projectId)" />
+          <AutomationLogsTab :projectId="parseInt(projectId)"/>
         </template>
       </Card>
     </div>
   </div>
 
-  <!-- 添加/编辑规则对话框 -->
-  <Dialog
-      v-model:visible="showRuleDialog"
-      modal
-      :header="isRuleEditMode ? '编辑自动化规则' : '添加自动化规则'"
-      :style="{ width: '800px', maxWidth: '90vw' }"
-      :dismissableMask="true"
-  >
-    <div class="space-y-6">
-      <!-- 规则名称 -->
-      <div class="space-y-2">
-        <label class="text-sm font-medium text-gray-700 flex items-center">
-          <i class="pi pi-tag text-gray-500 mr-2"></i>
-          规则名称
-          <span class="text-red-500 ml-1">*</span>
-        </label>
-        <InputText
-            v-model="newRule.name"
-            placeholder="例如：高CPI自动暂停"
-            class="w-full"
-        />
-      </div>
-
-      <Divider/>
-
-      <!-- 时间参数 -->
-      <div class="space-y-3">
-        <div class="flex items-center mb-3">
-          <i class="pi pi-clock text-blue-600 mr-2"></i>
-          <span class="text-sm font-semibold text-gray-700">时间参数</span>
-        </div>
-
-        <div class="grid grid-cols-2 gap-4">
-          <div class="space-y-2">
-            <label class="text-sm font-medium text-gray-700">时间粒度</label>
-            <Dropdown
-                v-model="newRule.timeGranularity"
-                :options="timeGranularityOptions"
-                optionLabel="label"
-                optionValue="value"
-                placeholder="选择时间粒度"
-                class="w-full"
-            />
-          </div>
-
-          <div class="space-y-2">
-            <label class="text-sm font-medium text-gray-700">时间范围</label>
-            <InputNumber
-                v-model="newRule.timeRange"
-                :min="1"
-                :max="365"
-                placeholder="输入数字"
-                class="w-full"
-            />
-            <span class="text-xs text-gray-500">{{ timeRangeDescription }}</span>
-          </div>
-        </div>
-      </div>
-
-      <Divider/>
-
-      <!-- 触发条件 -->
-      <div class="space-y-3">
-        <div class="flex items-center justify-between mb-3">
-          <div class="flex items-center">
-            <i class="pi pi-filter text-green-600 mr-2"></i>
-            <span class="text-sm font-semibold text-gray-700">触发条件</span>
-            <span class="text-red-500 ml-1">*</span>
-          </div>
-        </div>
-
-        <!-- 条件组显示（递归） -->
-        <ConditionGroupDisplay
-            :group="newRule.conditionGroup"
-            :level="0"
-            @remove="removeConditionOrGroup"
-            @add-condition="addConditionToGroup"
-            @add-group="addGroupToRoot"
-            @edit="editCondition"
-        />
-
-      </div>
-
-      <Divider/>
-
-      <!-- 触发动作 -->
-      <div class="space-y-3">
-        <div class="flex items-center mb-3">
-          <i class="pi pi-bolt text-orange-600 mr-2"></i>
-          <span class="text-sm font-semibold text-gray-700">触发动作</span>
-        </div>
-
-        <div class="grid grid-cols-2 gap-4">
-          <div class="space-y-2" :class="{ 'col-span-2': !selectedAction?.needsValue }">
-            <label class="text-sm font-medium text-gray-700">执行动作</label>
-            <Dropdown
-                v-model="newRule.action"
-                :options="actionOptions"
-                optionLabel="label"
-                optionValue="value"
-                placeholder="选择动作"
-                class="w-full"
-            />
-          </div>
-
-          <div v-if="selectedAction?.needsValue" class="space-y-2">
-            <label class="text-sm font-medium text-gray-700">调整百分比</label>
-            <div class="flex items-center gap-2">
-              <InputNumber
-                  v-model="newRule.actionValue"
-                  :min="1"
-                  :max="100"
-                  placeholder="输入百分比"
-                  class="flex-1"
-              />
-              <span class="text-sm text-gray-600">%</span>
-            </div>
-            <span class="text-xs text-gray-500">范围: 1% - 100%</span>
-          </div>
-        </div>
-      </div>
-
-      <Divider/>
-
-      <!-- 规则状态 -->
-      <div class="flex items-center justify-between">
-        <div class="flex items-center">
-          <i class="pi pi-power-off text-purple-600 mr-2"></i>
-          <span class="text-sm font-medium text-gray-700">创建后立即启用</span>
-        </div>
-        <ToggleButton
-            v-model="newRule.enabled"
-            onLabel="是"
-            offLabel="否"
-        />
-      </div>
-    </div>
-
-    <template #footer>
-      <div class="flex justify-end gap-2">
-        <Button
-            label="取消"
-            severity="secondary"
-            :disabled="saving"
-            @click="showRuleDialog = false"
-        />
-        <Button
-            :label="isRuleEditMode ? '保存' : '添加规则'"
-            :loading="saving"
-            @click="addAutomationRule"
-        />
-      </div>
-    </template>
-  </Dialog>
-
-  <!-- 条件编辑对话框 -->
-  <Dialog
-      v-model:visible="showConditionDialog"
-      modal
-      :header="isConditionEditMode ? '编辑条件' : '添加条件'"
-      :style="{ width: '700px' }"
-      :dismissableMask="true"
-  >
-    <div class="space-y-4">
-      <!-- 指标类型选择 -->
-      <div class="grid grid-cols-2 gap-2">
-        <Button
-            label="数值指标"
-            :severity="currentCondition.metricType === 'numeric' ? 'primary' : 'secondary'"
-            @click="onMetricTypeChange('numeric')"
-            size="small"
-        />
-        <Button
-            label="字符串指标"
-            :severity="currentCondition.metricType === 'string' ? 'primary' : 'secondary'"
-            @click="onMetricTypeChange('string')"
-            size="small"
-        />
-      </div>
-
-      <!-- 3个输入框并排 -->
-      <div class="grid grid-cols-3 gap-3">
-        <!-- 指标选择 -->
-        <div class="space-y-2">
-          <label class="text-sm font-medium text-gray-700">指标</label>
-          <Dropdown
-              v-model="currentCondition.metric"
-              :options="currentCondition.metricType === 'numeric' ? numericMetricOptions : stringMetricOptions"
-              optionLabel="label"
-              optionValue="value"
-              placeholder="选择指标"
-              class="w-full"
-              @change="onMetricChange"
-          />
-        </div>
-
-        <!-- 操作符选择 -->
-        <div class="space-y-2">
-          <label class="text-sm font-medium text-gray-700">操作符</label>
-          <Dropdown
-              v-model="currentCondition.operator"
-              :options="currentOperatorOptions"
-              optionLabel="label"
-              optionValue="value"
-              placeholder="选择操作符"
-              class="w-full"
-          >
-            <template #option="slotProps">
-              <span>{{ slotProps.option.label }} ({{ slotProps.option.symbol }})</span>
-            </template>
-          </Dropdown>
-        </div>
-
-        <!-- 值输入 -->
-        <div class="space-y-2">
-          <label class="text-sm font-medium text-gray-700">值</label>
-
-          <!-- 数值输入 -->
-          <div v-if="currentCondition.metricType === 'numeric'" class="flex items-center gap-1">
-            <InputNumber
-                v-model="currentCondition.value"
-                :min="currentSelectedMetric?.min"
-                :max="currentSelectedMetric?.max"
-                :minFractionDigits="0"
-                :maxFractionDigits="2"
-                placeholder="输入数值"
-                class="flex-1"
-            />
-            <span v-if="currentSelectedMetric?.unit" class="text-sm text-gray-600 min-w-[24px]">
-              {{ currentSelectedMetric.unit }}
-            </span>
-          </div>
-
-          <!-- 字符串输入或下拉选择 -->
-          <div v-else>
-            <!-- 等于/不等于使用下拉选择 -->
-            <Dropdown
-                v-if="shouldShowDropdown"
-                v-model="currentCondition.value"
-                :options="availableValues"
-                placeholder="选择值"
-                class="w-full"
-            />
-            <!-- 包含/不包含使用文本输入 -->
-            <InputText
-                v-else
-                v-model="currentCondition.value"
-                placeholder="输入文本"
-                class="w-full"
-            />
-          </div>
-        </div>
-      </div>
-
-      <!-- 提示信息 -->
-      <div v-if="currentCondition.metricType === 'numeric' && currentSelectedMetric" class="text-xs text-gray-500">
-        有效范围: {{ currentSelectedMetric.min }} - {{ currentSelectedMetric.max }}
-      </div>
-    </div>
-
-    <template #footer>
-      <div class="flex justify-end gap-2">
-        <Button
-            label="取消"
-            severity="secondary"
-            @click="showConditionDialog = false"
-        />
-        <Button
-            :label="isConditionEditMode ? '保存' : '确定'"
-            @click="confirmAddCondition"
-        />
-      </div>
-    </template>
-  </Dialog>
+  <!-- 自动化规则对话框 -->
+  <AutomationRuleDialog
+    v-model:visible="showRuleDialog"
+    :rule="editingRule"
+    :projectId="parseInt(projectId)"
+    :stringMetricOptions="stringMetricOptions"
+    :numericOperatorOptions="numericOperatorOptions"
+    :stringOperatorOptions="stringOperatorOptions"
+    :availableAccountNames="availableAccountNames"
+    :availableCampaignNames="availableCampaignNames"
+    :availableAdsetNames="availableAdsetNames"
+    :availableAdNames="availableAdNames"
+    @saved="handleRuleSaved"
+  />
 </template>
 
 <style scoped>

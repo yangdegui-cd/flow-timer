@@ -26,6 +26,8 @@ export interface Project {
   active_ads_automate: boolean
   description?: string
   status: ProjectStatus
+  time_zone?: number
+  adjust_game_token?: string
   sys_users?: User[]
   user_count?: number
   created_at: string
@@ -52,6 +54,8 @@ export interface ProjectFormData {
   active_ads_automate: boolean
   description?: string
   status: ProjectStatus
+  time_zone?: number
+  adjust_game_token?: string
 }
 
 // 项目列表查询参数

@@ -75,15 +75,15 @@ class AutomationLog < ApplicationRecord
   def display_name
     case action_type
     when '项目编辑'
-      '项目编辑'
+      action
     when '规则触发'
-      "广告: \"#{remark["ad_name"]}\" 触发自动化投放规则: \"#{remark["rule_name"]}\""
+      "广告: \"#{remark["ad_name"]}\" 触发自动化投放规则: \"#{remark["rule"]["name"]}\""
     when '定时任务'
-      '定时任务'
+      action
     when '调整广告投放'
-      '调整广告投放'
+      action
     else
-      action_type
+      action
     end
   end
 
@@ -94,7 +94,7 @@ class AutomationLog < ApplicationRecord
         project: { only: [:id, :name] },
         sys_user: { only: [:id, :name, :email] }
       },
-      methods: [:duration_in_seconds, :display_status]
+      methods: [:duration_in_seconds, :display_status, :display_name]
     ))
   end
 end

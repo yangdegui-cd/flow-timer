@@ -1,11 +1,18 @@
 class AutomationLogsController < ApplicationController
   skip_before_action :authenticate_user!
   skip_before_action :validate_permission!
-  before_action :set_project, only: [:index]
+  before_action :set_project, only: [:index], if: -> { params[:project_id].present? }
 
-  # GET /projects/:project_id/automation_logs
+  # GET /automation_logs (全局查询)
+  # GET /projects/:project_id/automation_logs (项目级查询)
   def index
-    @logs = @project.automation_logs
+    # 根据是否有 project_id 参数决定查询范围
+    @logs = params[:project_id].present? ? @project.automation_logs : AutomationLog.all
+
+    # 项目筛选(仅用于全局查询)
+    if params[:project_id].blank? && params[:project_id_filter].present?
+      @logs = @logs.where(project_id: params[:project_id_filter])
+    end
 
     # 筛选条件
     @logs = @logs.by_action_type(params[:action_type]) if params[:action_type].present?
@@ -32,14 +39,18 @@ class AutomationLogsController < ApplicationController
 
     @logs = @logs.recent.offset((page - 1) * per_page).limit(per_page)
 
+    # 全局查询时包含项目信息
+    include_options = {
+      sys_user: {
+        only: [:id, :name, :email],
+        methods: [:initials]
+      }
+    }
+    include_options[:project] = { only: [:id, :name] } if params[:project_id].blank?
+
     render json: ok({
       logs: @logs.as_json(
-        include: {
-          sys_user: {
-            only: [:id, :name, :email],
-            methods: [:initials]
-          }
-        },
+        include: include_options,
         methods: [:duration_in_seconds, :display_status, :display_name]
       ),
       pagination: {

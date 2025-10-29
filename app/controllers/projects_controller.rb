@@ -212,7 +212,7 @@ class ProjectsController < ApplicationController
   end
 
   def project_params
-    params.require(:project).permit(:name, :start_date, :active_ads_automate, :description, :status)
+    params.require(:project).permit(:name, :start_date, :active_ads_automate, :description, :status, :time_zone, :adjust_game_token)
   end
 
   def authenticate_user!

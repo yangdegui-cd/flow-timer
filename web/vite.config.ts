@@ -13,6 +13,7 @@ export default defineConfig({
   server: {
     proxy: {
       "/dev": {
+        // target: 'https://kamden-refusable-populously.ngrok-free.dev', changeOrigin: true, rewrite: (path) => path.replace(/^\/dev/, ''),
         target: 'http://127.0.0.1:3000', changeOrigin: true, rewrite: (path) => path.replace(/^\/dev/, ''),
       }
     }

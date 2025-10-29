@@ -94,10 +94,13 @@ class AdsDataApi extends BaseApi {
 
   // 获取广告数据列表
   async getAdsData(params?: {
+    project_id?: number
+    platform?: string
     ads_account_id?: number
     start_date?: string
     end_date?: string
     campaign_name?: string
+    search?: string
     page?: number
     per_page?: number
     order_by?: string
@@ -108,20 +111,28 @@ class AdsDataApi extends BaseApi {
 
   // 获取统计数据
   async getStats(params?: {
+    project_id?: number
+    platform?: string
     ads_account_id?: number
     start_date?: string
     end_date?: string
+    granularity?: string
   }): Promise<AdsStatsResponse> {
     return this.get<AdsStatsResponse>('stats', params)
   }
 
   // 获取广告账户列表
-  async getAccounts(): Promise<AdsAccount[]> {
-    return this.get<AdsAccount[]>('accounts')
+  async getAccounts(params?: {
+    project_id?: number
+    platform?: string
+  }): Promise<AdsAccount[]> {
+    return this.get<AdsAccount[]>('accounts', params)
   }
 
   // 获取活动列表
   async getCampaigns(params?: {
+    project_id?: number
+    platform?: string
     ads_account_id?: number
   }): Promise<Campaign[]> {
     return this.get<Campaign[]>('campaigns', params)

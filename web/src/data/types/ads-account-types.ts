@@ -15,7 +15,6 @@ export interface AdsAccount {
   sync_frequency: number
   sync_status: 'success' | 'error' | 'pending'
   last_error: string | null
-  token_expires_at: string | null
   config: Record<string, any> | null
   created_at: string
   updated_at: string

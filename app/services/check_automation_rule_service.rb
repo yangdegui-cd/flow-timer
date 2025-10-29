@@ -22,7 +22,13 @@ class CheckAutomationRuleService
                                  action: "自动化规则触发",
                                  duration: 0,
                                  status: "success",
-                                 remark: ad_info.merge({rule_name: rule.name}),
+                                 remark: ad_info.merge({
+                                                         action: rule.action,
+                                                         rule: rule.as_json,
+                                                         project_name: project.name,
+                                                         time_zone: get_timezone,
+                                                         ads_account_name: AdsAccount.find(ad_info['ads_account_id']).name
+                                                       }),
                                })
         rescue => e
           Rails.logger.error "Failed to create automation log: #{e.message}"
@@ -40,7 +46,7 @@ class CheckAutomationRuleService
   def build_query
     <<~SQL
       SELECT #{group_by_rule.join(', ')}
-      FROM ads_data
+      FROM ads_merge_data
       WHERE #{condition_time_range}
         AND #{condition_project}
         AND (#{condition_by_rule})

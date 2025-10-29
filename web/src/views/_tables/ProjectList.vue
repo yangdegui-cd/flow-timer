@@ -188,16 +188,7 @@ const getStatusLabel = (status: string) => {
             severity="info"
             v-tooltip.top="'编辑项目'"
           >
-            <i class="pi pi-pencil"></i>
-          </Button>
-          <Button
-            @click="$emit('assign', data)"
-            size="small"
-            text
-            severity="success"
-            v-tooltip.top="'分配用户'"
-          >
-            <i class="pi pi-users"></i>
+            <i class="pi pi-cog"></i>
           </Button>
           <Button
             @click="$emit('delete', data)"

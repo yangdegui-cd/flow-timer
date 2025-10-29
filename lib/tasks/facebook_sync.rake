@@ -21,7 +21,7 @@ namespace :facebook do
       puts "\n[#{index + 1}/#{total_accounts}] 同步账户: #{account.name} (#{account.account_id})"
 
       begin
-        sync_service = FacebookAdsWideSyncService.new(account)
+        sync_service = FacebookReportService.new(account)
 
         # 同步最近7天的数据，使用基础breakdown获取细分数据
         options = {
@@ -34,7 +34,7 @@ namespace :facebook do
           breakdowns: %w[age gender]  # 基础breakdown：年龄段+性别
         }
 
-        result = sync_service.sync_to_wide_table(options)
+        result = sync_service.fetch_recent_data(options)
 
         if result
           puts "✅ 同步成功"
@@ -90,7 +90,7 @@ namespace :facebook do
     puts "同步Facebook广告账户: #{account.name} (#{account.account_id})"
 
     begin
-      sync_service = FacebookAdsWideSyncService.new(account)
+      sync_service = FacebookReportService.new(account)
 
       # 提供更多自定义选项
       options = {
@@ -109,7 +109,7 @@ namespace :facebook do
       puts "- 小时级别: #{options[:hourly]}"
       puts "- 维度分解: #{options[:breakdowns].join(', ')}"
 
-      result = sync_service.sync_to_wide_table(options)
+      result = sync_service.fetch_recent_data(options)
 
       if result
         puts "✅ 同步成功"

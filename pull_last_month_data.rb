@@ -35,12 +35,12 @@ date_range = {
 puts "\n=== 开始数据同步 ==="
 puts "时间范围: #{date_range[:since]} 到 #{date_range[:until]}"
 
-sync_service = FacebookAdsWideSyncService.new(ads_account)
+sync_service = FacebookReportService.new(ads_account)
 
 begin
   # 首先同步活动级别数据
   puts "\n1. 同步活动级别数据..."
-  result1 = sync_service.sync_to_wide_table(
+  result1 = sync_service.fetch_recent_data(
     date_range: date_range,
     level: "campaign",
     time_increment: "day"
@@ -55,7 +55,7 @@ begin
   # 然后同步广告组级别数据
   puts "\n2. 同步广告组级别数据..."
   sync_service.errors.clear
-  result2 = sync_service.sync_to_wide_table(
+  result2 = sync_service.fetch_recent_data(
     date_range: date_range,
     level: "adset",
     time_increment: "day"
@@ -70,7 +70,7 @@ begin
   # 最后同步广告级别数据（最详细）
   puts "\n3. 同步广告级别数据..."
   sync_service.errors.clear
-  result3 = sync_service.sync_to_wide_table(
+  result3 = sync_service.fetch_recent_data(
     date_range: date_range,
     level: "ad",
     time_increment: "day",

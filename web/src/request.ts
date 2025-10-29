@@ -16,6 +16,7 @@ service.interceptors.request.use(
     const token = localStorage.getItem('auth_token')
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`
+      config.headers['ngrok-skip-browser-warning'] = '69420'
     }
 
     // 如果有自定义headers，合并它们

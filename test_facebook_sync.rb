@@ -97,11 +97,11 @@ end
 
 # 开始数据同步测试
 puts "\n=== 开始Facebook广告数据同步测试 ==="
-sync_service = FacebookAdsWideSyncService.new(ads_account)
+sync_service = FacebookReportService.new(ads_account)
 
 begin
   # 同步最近3天的数据
-  result = sync_service.sync_to_wide_table(
+  result = sync_service.fetch_recent_data(
     date_range: {
       since: 3.days.ago.strftime("%Y-%m-%d"),
       until: Date.current.strftime("%Y-%m-%d")

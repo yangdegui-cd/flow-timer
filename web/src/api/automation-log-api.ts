@@ -66,6 +66,16 @@ class AutomationLogApi extends BaseApi {
     super('automation_logs')
   }
 
+  // 获取所有项目的日志列表(全局查询)
+  async getAllLogs(params?: AutomationLogQueryParams): Promise<AutomationLogListResponse> {
+    return BaseApi.apiRequest<AutomationLogListResponse>(
+      'GET',
+      '/automation_logs',
+      null,
+      params
+    )
+  }
+
   // 获取项目的日志列表
   async getProjectLogs(
     projectId: number,

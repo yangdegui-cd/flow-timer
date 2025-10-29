@@ -1,25 +1,12 @@
-# Resque Scheduler configuration
-# This file defines scheduled jobs that will run at specific times
-
-# Clean up old task executions daily
-clean_old_executions:
-  cron: '0 2 * * *'  # Every day at 2:00 AM
-  class: CleanupJob
-  queue: maintenance
-  description: "Clean up old task executions older than 30 days"
+fetch_all_adjust_reports:
+  cron: "2 * * * * Asia/Hong_Kong"
+  class: "FetchAllAdjustReportJob"
+  queue: "queue-ads-data"
   args:
-    days_to_keep: 30
+  description: "每小时拉取所有的Adjust报告数据"
 
-# Example periodic health check (commented out)
-# health_check:
-#   every: 5m
-#   class: HealthCheckJob
-#   queue: monitoring
-#   description: "System health check"
-
-# Example one-time scheduled task
-# special_maintenance:
-#   at: '2024-01-01 03:00:00'
-#   class: MaintenanceJob
-#   queue: maintenance
-#   description: "Special maintenance task"
+fetch_all_facebook_reports:
+  cron: "2 * * * * Asia/Hong_Kong"
+  class: "FetchAllFacebookReportJob"
+  queue: "queue-ads-data"
+  args:
