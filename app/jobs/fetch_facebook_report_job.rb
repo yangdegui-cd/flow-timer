@@ -84,44 +84,79 @@ class FetchFacebookReportJob < BaseResqueJob
     end
 
     total_accounts = facebook_accounts.count
+    log_info "找到 #{total_accounts} 个Facebook广告账户需要同步"
+
+    # 使用多线程并发同步，提高效率
+    # 根据账户数量动态调整线程数，避免过多线程
+    max_threads = [total_accounts, 5].min  # 最多5个并发线程
+    log_info "使用 #{max_threads} 个并发线程进行同步"
+
+    # 线程安全的计数器
+    mutex = Mutex.new
     successful_syncs = 0
     failed_syncs = 0
     total_rows = 0
 
-    log_info "找到 #{total_accounts} 个Facebook广告账户需要同步"
-
+    # 使用线程池并发执行
+    threads = []
     facebook_accounts.each_with_index do |account, index|
-      log_info "[#{index + 1}/#{total_accounts}] 同步账户: #{account.name} (#{account.account_id})"
-
-      begin
-        sync_account_data(days, account)
-        successful_syncs += 1
-        log_info "账户 #{account.name} 同步成功"
-
-        # 显示同步统计
-        recent_count = AdsData.where(ads_account: account)
-                              .where(created_at: 1.hour.ago..Time.current)
-                              .count
-        total_rows += recent_count
-        log_info "账户 #{account.name} 新增记录: #{recent_count} 条"
-
-      rescue => e
-        failed_syncs += 1
-        log_error "账户 #{account.name} 同步失败: #{e.message}", e
-
-        # 更新账户同步状态
-        account.update!(
-          sync_status: 'error',
-          last_error: e.message,
-          last_sync_at: Time.current
-        )
+      # 控制并发数量
+      if threads.size >= max_threads
+        threads.first.join  # 等待最早的线程完成
+        threads.shift
       end
 
-      # 避免API频率限制
-      sleep(2) if index < total_accounts - 1
+      thread = Thread.new do
+        # 为每个线程建立独立的数据库连接
+        ActiveRecord::Base.connection_pool.with_connection do
+          log_info "[#{index + 1}/#{total_accounts}] 开始同步账户: #{account.name} (#{account.account_id})"
+
+          begin
+            sync_account_data(days, account)
+
+            # 显示同步统计
+            recent_count = AdsData.where(ads_account: account)
+                                  .where(created_at: 1.hour.ago..Time.current)
+                                  .count
+
+            # 线程安全地更新计数器
+            mutex.synchronize do
+              successful_syncs += 1
+              total_rows += recent_count
+            end
+
+            log_info "✓ 账户 #{account.name} 同步成功，新增记录: #{recent_count} 条"
+
+          rescue => e
+            # 线程安全地更新计数器
+            mutex.synchronize do
+              failed_syncs += 1
+            end
+
+            log_error "✗ 账户 #{account.name} 同步失败: #{e.message}", e
+
+            # 更新账户同步状态
+            begin
+              account.update!(
+                sync_status: 'error',
+                last_error: e.message,
+                last_sync_at: Time.current
+              )
+            rescue => update_error
+              log_error "更新账户状态失败: #{update_error.message}"
+            end
+          end
+        end
+      end
+
+      threads << thread
     end
 
-    log_info "同步完成统计: 成功 #{successful_syncs}/#{total_accounts}, 失败 #{failed_syncs}/#{total_accounts}"
+    # 等待所有线程完成
+    log_info "等待所有同步线程完成..."
+    threads.each(&:join)
+
+    log_info "同步完成统计: 成功 #{successful_syncs}/#{total_accounts}, 失败 #{failed_syncs}/#{total_accounts}, 总记录数: #{total_rows}"
 
     {
       total_accounts: total_accounts,

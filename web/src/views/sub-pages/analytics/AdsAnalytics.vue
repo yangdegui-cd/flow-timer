@@ -1,32 +1,36 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref, watch } from 'vue'
+import { useToast } from 'primevue/usetoast'
 import PageHeader from '@/views/layer/PageHeader.vue'
 import Panel from 'primevue/panel'
 import Select from 'primevue/select'
-import MultiSelect from 'primevue/multiselect'
 import Calendar from 'primevue/calendar'
 import Button from 'primevue/button'
 import FloatLabel from 'primevue/floatlabel'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
-import Tag from 'primevue/tag'
 import ProgressSpinner from 'primevue/progressspinner'
-import Card from 'primevue/card'
-import projectApi from '@/api/project-api'
-import adsDataApi from '@/api/ads-data-api'
-import { useMetricsStore } from '@/stores/metrics'
-import type { Metric, GroupedResult, MetricResult } from '@/stores/metrics'
+import Tag from 'primevue/tag'
+import AdsDataApi from '@/api/ads-data-api'
 import { format } from 'date-fns'
+import useSyncUrlParams from "@/utils/syncUrlParams";
+import MetricsSelector from "@/views/_selector/MetricsSelector.vue";
+import DimensionSelector from "@/views/_selector/DimensionSelector.vue";
+import { ellipsis, formatValue } from '@/utils/format-helpers'
+import { useMetricsStore } from "@/stores/metrics"
+import { useCommonDataStore } from "@/stores/common-data"
 
-// Stores
+const toast = useToast()
 const metricsStore = useMetricsStore()
+const commonDataStore = useCommonDataStore()
 
 // 响应式数据
 const loading = ref(false)
-const projects = ref<any[]>([])
-const accounts = ref<any[]>([])
-const results = ref<GroupedResult[] | MetricResult[]>([])
+const results = ref([])
 const totalRows = ref(0)
+
+const tableDimensionColumns = ref<any[]>([])
+const tableMetricsColumns = ref<any[]>([])
 
 // 筛选器
 const filters = reactive({
@@ -35,33 +39,21 @@ const filters = reactive({
   ads_account_id: null as number | null,
   start_date: '',
   end_date: '',
-  time_dimension: '' as string,
-  dimensions: [] as string[],
-  metric_ids: [] as number[]
+  dimensions: ["date"] as string[],
+  metrics: [] as string[],
+  page: 1,
+  per_page: 50,
+  order_by: null,
+  order_direction: -1,
+})
+
+useSyncUrlParams(filters, {
+  numberFields: ["project_id", "ads_account_id", "order_direction"],
+  arrayFields: ["dimensions", "metrics"]
 })
 
 const selectedDateDates = ref<Date[]>([])
 const filterPanelCollapsed = ref(false)
-const dimensionPanelCollapsed = ref(false)
-
-// 时间维度选项（互斥，单选）
-const timeDimensionOptions = [
-  { label: '季度', value: 'quarter' },
-  { label: '月', value: 'month' },
-  { label: '周', value: 'week' },
-  { label: '日期', value: 'date' },
-  { label: '小时', value: 'hour' }
-]
-
-// 可多选维度
-const dimensionOptions = [
-  { label: '项目', value: 'project_id' },
-  { label: '平台', value: 'platform' },
-  { label: '账号', value: 'ads_account_id' },
-  { label: '广告系列', value: 'campaign_name' },
-  { label: '广告组', value: 'adset_name' },
-  { label: '广告', value: 'ad_name' }
-]
 
 // 平台选项
 const platformOptions = [
@@ -69,16 +61,6 @@ const platformOptions = [
   { label: 'Google', value: 'google' },
   { label: 'TikTok', value: 'tiktok' }
 ]
-
-// 计算属性：是否有分组
-const hasGrouping = computed(() => {
-  return filters.time_dimension || filters.dimensions.length > 0
-})
-
-// 计算属性：选中的指标
-const selectedMetrics = computed(() => {
-  return metricsStore.getMetricsByIds(filters.metric_ids)
-})
 
 // 初始化默认日期范围
 const initDefaultDateRange = () => {
@@ -97,103 +79,98 @@ const handleDateChange = () => {
   }
 }
 
-// 加载项目列表
-const loadProjects = async () => {
-  try {
-    projects.value = await projectApi.list()
-  } catch (error) {
-    console.error('加载项目列表失败:', error)
-  }
-}
-
-// 加载账户列表
-const loadAccounts = async () => {
-  try {
-    const params: any = {}
-    if (filters.project_id) params.project_id = filters.project_id
-    if (filters.platform) params.platform = filters.platform
-    accounts.value = await adsDataApi.getAccounts(params)
-  } catch (error) {
-    console.error('加载账户失败:', error)
-  }
-}
-
 // 当项目或平台变化时重新加载账户
 const handleProjectOrPlatformChange = async () => {
   filters.ads_account_id = null
-  await loadAccounts()
+  const params: any = {}
+  if (filters.project_id) params.project_id = filters.project_id
+  if (filters.platform) params.platform = filters.platform
+  await commonDataStore.loadAdsAccounts(params)
 }
 
 // 查询数据
-const queryData = async () => {
-  if (filters.metric_ids.length === 0) {
-    alert('请至少选择一个指标')
-    return
+const queryData = () => {
+  if (filters.metrics.length === 0) {
+    return toast.add({ severity: 'error', detail: '请至少选择一个指标进行查询', life: 3000 })
   }
+  if (filters.dimensions.length === 0) {
+    return toast.add({ severity: 'error', detail: '请至少选择一个维度进行查询', life: 3000 })
+  }
+  calculateDimensionColumns()
+  calculateMetricColumns()
 
   loading.value = true
-  try {
-    const params: any = {
-      metric_ids: filters.metric_ids,
-      start_date: filters.start_date,
-      end_date: filters.end_date
-    }
 
-    if (filters.project_id) params.project_id = filters.project_id
-    if (filters.platform) params.platform = filters.platform
-    if (filters.ads_account_id) params.ads_account_id = filters.ads_account_id
-    if (filters.time_dimension) params.time_dimension = filters.time_dimension
-    if (filters.dimensions.length > 0) params.dimensions = filters.dimensions
+  const params = JSON.parse(JSON.stringify(filters))
 
-    const response = await metricsStore.calculateMetrics(params)
-    results.value = response.results || []
-    totalRows.value = response.total_rows || results.value.length
-  } catch (error: any) {
-    console.error('查询数据失败:', error)
-    alert(error.response?.data?.error || metricsStore.error || '查询失败')
-  } finally {
+  if (filters.project_id === null) delete (params, "project_id")
+  if (filters.platform === null) delete (params, "platform")
+  if (filters.ads_account_id === null) delete (params, "ads_account_id")
+
+  AdsDataApi.getAdsData(params).then(response => {
+    results.value = response.data || []
+    console.log("查询结果", results.value)
+    totalRows.value = response.pagination?.total_count
+  }).catch(err => {
+    console.error('查询数据失败:', err)
+    toast.add({ severity: 'error', detail: err.msg ?? '查询数据失败，请稍后重试', life: 3000 })
+  }).finally(() => {
     loading.value = false
-  }
+  })
 }
 
 // 获取表格列配置
-const getTableColumns = () => {
-  const columns: any[] = []
+const calculateDimensionColumns = () => {
+  tableDimensionColumns.value = []
+  filters.dimensions.forEach((dimName: string) => {
+    const dimension = metricsStore.getDimension(dimName)
+    console.log("维度名", dimName)
+    console.log("维度信息", dimension)
+    if (!dimension) return
 
-  // 添加时间维度列
-  if (filters.time_dimension) {
-    columns.push({
-      field: 'time_value',
-      header: getTimeDimensionLabel(filters.time_dimension),
-      sortable: true
-    })
-  }
-
-  // 添加其他维度列
-  filters.dimensions.forEach(dim => {
-    switch (dim) {
-      case 'project_id':
-        columns.push({ field: 'project_name', header: '项目', sortable: true })
-        break
-      case 'platform':
-        columns.push({ field: 'platform', header: '平台', sortable: true })
-        break
-      case 'ads_account_id':
-        columns.push({ field: 'ads_account_name', header: '账号', sortable: true })
-        break
-      case 'campaign_name':
-        columns.push({ field: 'campaign_name', header: '广告系列', sortable: true })
-        break
-      case 'adset_name':
-        columns.push({ field: 'adset_name', header: '广告组', sortable: true })
-        break
-      case 'ad_name':
-        columns.push({ field: 'ad_name', header: '广告', sortable: true })
-        break
+    const config = dimension.display_config || {}
+    const column: any = {
+      field: dimName,
+      header: dimension.display_name,
+      sortable: config.sortable !== false,
+      frozen: config.frozen || false
     }
-  })
+    // 添加宽度
+    if (config.width) {
+      column.style = { width: `${config.width}px`, minWidth: `${config.width}px` }
+    }
+    // 添加对齐方式
+    if (config.align) {
+      column.bodyClass = `text-${config.align}`
+      column.headerClass = `text-${config.align}`
+    }
 
-  return columns
+    tableDimensionColumns.value.push(column)
+  })
+}
+
+const calculateMetricColumns = () => {
+  tableMetricsColumns.value = []
+  filters.metrics.forEach((metricKey: string) => {
+    const metric = metricsStore.getMetric(metricKey)
+    if (!metric) return
+
+    const config = metric.display_config || {}
+    const column: any = {
+      field: metricKey,
+      header: metric.display_name,
+      unit: metric.unit,
+      sortable: config.sortable !== false,
+      ...config
+    }
+    // 添加宽度
+    if (config.width) {
+      column.style = { width: `${config.width}px`, minWidth: `${config.width}px` }
+    }
+
+    console.log(column)
+    tableMetricsColumns.value.push(column)
+  })
 }
 
 // 获取时间维度标签
@@ -203,9 +180,61 @@ const getTimeDimensionLabel = (dimension: string) => {
 }
 
 // 格式化指标值
-const formatMetricValue = (metric: any) => {
-  if (metric?.error) return metric.error
-  return metric?.formatted_value || metric?.value || '-'
+const formatMetricValue = (metricData: any) => {
+  if (!metricData) return '-'
+  if (metricData.error) return metricData.error
+
+  // 如果后端已经格式化，直接使用
+  if (metricData.formatted_value) return metricData.formatted_value
+
+  // 否则使用前端格式化
+  const metricInfo = metricsStore.getMetric(metricData.key)
+  if (metricInfo) {
+    return formatValue(metricData.value, metricInfo.display_config, metricInfo.unit)
+  }
+
+  return metricData.value || '-'
+}
+
+// 获取维度的显示配置
+const getDimensionConfig = (dimensionName: string) => {
+  const dimension = metricsStore.getDimension(dimensionName)
+  return dimension?.display_config || {}
+}
+
+// 获取指标的显示配置
+const getMetricConfig = (metricKey: string) => {
+  const metric = metricsStore.getMetric(metricKey)
+  return metric?.display_config || {}
+}
+
+// 格式化维度值（支持省略号和美化）
+const formatDimensionValue = (value: any, dimensionName: string) => {
+  if (value === null || value === undefined) return '-'
+
+  // 特殊维度的美化处理
+  let displayValue: string
+  switch (dimensionName) {
+    case 'project_id':
+      displayValue = commonDataStore.getProjectName(Number(value))
+      break
+    case 'ads_account_id':
+      displayValue = commonDataStore.getAdsAccountName(Number(value))
+      break
+    case 'platform':
+      displayValue = commonDataStore.getPlatformName(String(value))
+      break
+    default:
+      displayValue = String(value)
+  }
+
+  // 应用省略号配置
+  const config = getDimensionConfig(dimensionName)
+  if (config.ellipsis && displayValue.length > 30) {
+    return ellipsis(displayValue, 30)
+  }
+
+  return displayValue
 }
 
 // 获取指标颜色样式
@@ -216,272 +245,282 @@ const getMetricColorStyle = (color: string) => {
   }
 }
 
+// 获取平台图标和样式
+const getPlatformInfo = (platform: string) => {
+  const platformInfoMap: Record<string, { icon: string; color: string; severity: string }> = {
+    facebook: { icon: 'pi pi-facebook', color: '#1877F2', severity: 'info' },
+    google: { icon: 'pi pi-google', color: '#4285F4', severity: 'primary' },
+    tiktok: { icon: 'pi pi-play', color: '#000000', severity: 'contrast' },
+    twitter: { icon: 'pi pi-twitter', color: '#1DA1F2', severity: 'info' },
+    instagram: { icon: 'pi pi-instagram', color: '#E4405F', severity: 'danger' },
+    linkedin: { icon: 'pi pi-linkedin', color: '#0A66C2', severity: 'info' }
+  }
+
+  return platformInfoMap[platform?.toLowerCase()] || {
+    icon: 'pi pi-globe',
+    color: '#6B7280',
+    severity: 'secondary'
+  }
+}
+
+watch(() => metricsStore.metrics, () => {
+  // 如果当前选择的维度不在可选列表中，清除选择
+  if (metricsStore.metrics.length > 0) {
+    filters.metrics = metricsStore.metrics.map(v => v.key)
+    queryData()
+  }
+}, { immediate: true })
+
 // 初始化
-onMounted(async () => {
+onMounted(() => {
   initDefaultDateRange()
-  await Promise.all([
-    loadProjects(),
-    metricsStore.fetchMetrics()
-  ])
 })
 </script>
 
 <template>
-  <div class="ads-analytics">
-    <PageHeader title="广告数据分析" subtitle="基于维度和指标的广告数据分析" />
+  <PageHeader title="广告数据分析" description="基于维度和指标的广告数据分析" icon="pi pi-chart-line"/>
 
-    <!-- 筛选条件面板 -->
-    <Panel header="筛选条件" :toggleable="true" v-model:collapsed="filterPanelCollapsed" class="m-4">
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <!-- 项目筛选 -->
-        <FloatLabel variant="on">
-          <Select
+  <!-- 筛选条件面板 -->
+  <Panel header="筛选条件" :toggleable="true" v-model:collapsed="filterPanelCollapsed" class="m-4">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4">
+      <!-- 项目筛选 -->
+      <FloatLabel variant="on">
+        <Select
             id="project_filter"
             v-model="filters.project_id"
-            :options="projects"
+            :options="commonDataStore.projects"
             optionLabel="name"
             optionValue="id"
             showClear
+            size="small"
             @change="handleProjectOrPlatformChange"
             class="w-full"
-          />
-          <label for="project_filter">项目</label>
-        </FloatLabel>
+        />
+        <label for="project_filter">项目</label>
+      </FloatLabel>
 
-        <!-- 平台筛选 -->
-        <FloatLabel variant="on">
-          <Select
+      <!-- 平台筛选 -->
+      <FloatLabel variant="on">
+        <Select
             id="platform_filter"
             v-model="filters.platform"
             :options="platformOptions"
             showClear
+            size="small"
             @change="handleProjectOrPlatformChange"
             class="w-full"
-          />
-          <label for="platform_filter">平台</label>
-        </FloatLabel>
+        />
+        <label for="platform_filter">平台</label>
+      </FloatLabel>
 
-        <!-- 账号筛选 -->
-        <FloatLabel variant="on">
-          <Select
+      <!-- 账号筛选 -->
+      <FloatLabel variant="on">
+        <Select
             id="account_filter"
             v-model="filters.ads_account_id"
-            :options="accounts"
+            :options="commonDataStore.adsAccounts"
             optionLabel="name"
             optionValue="id"
             showClear
+            size="small"
             class="w-full"
-          />
-          <label for="account_filter">账号</label>
-        </FloatLabel>
+        />
+        <label for="account_filter">账号</label>
+      </FloatLabel>
 
-        <!-- 日期范围 -->
-        <FloatLabel variant="on">
-          <Calendar
+      <!-- 日期范围 -->
+      <FloatLabel variant="on">
+        <DatePicker
             id="date_range"
             v-model="selectedDateDates"
             selectionMode="range"
             dateFormat="yy-mm-dd"
             showIcon
             @date-select="handleDateChange"
+            size="small"
             class="w-full"
-          />
-          <label for="date_range">日期范围</label>
+        />
+        <label for="date_range">日期范围</label>
+      </FloatLabel>
+
+      <div>
+        <FloatLabel variant="on">
+          <DimensionSelector v-model="filters.dimensions" multiple class="w-full" size="small"/>
+          <label for="dimensions">分组维度（可多选）</label>
         </FloatLabel>
       </div>
-    </Panel>
 
-    <!-- 维度和指标配置 -->
-    <Panel header="维度和指标配置" :toggleable="true" v-model:collapsed="dimensionPanelCollapsed" class="m-4">
-      <div class="space-y-4">
-        <!-- 时间维度 -->
-        <div>
-          <FloatLabel variant="on">
-            <Select
-              id="time_dimension"
-              v-model="filters.time_dimension"
-              :options="timeDimensionOptions"
-              showClear
-              placeholder="选择时间维度（可选）"
-              class="w-full"
-            />
-            <label for="time_dimension">时间维度（互斥，单选）</label>
-          </FloatLabel>
-          <small class="text-gray-500 ml-2">按季度、月、周、日期或小时分组数据</small>
-        </div>
+      <div>
+        <MetricsSelector v-model="filters.metrics" multiple class="w-full" size="small"/>
+      </div>
 
-        <!-- 属性维度 -->
-        <div>
-          <FloatLabel variant="on">
-            <MultiSelect
-              id="dimensions"
-              v-model="filters.dimensions"
-              :options="dimensionOptions"
-              placeholder="选择分组维度（可选）"
-              display="chip"
-              class="w-full"
-            />
-            <label for="dimensions">分组维度（可多选）</label>
-          </FloatLabel>
-          <small class="text-gray-500 ml-2">可按项目、平台、账号、广告系列、广告组、广告等维度分组</small>
-        </div>
-
-        <!-- 指标选择 -->
-        <div>
-          <FloatLabel variant="on">
-            <MultiSelect
-              id="metrics"
-              v-model="filters.metric_ids"
-              :options="metricsStore.metrics"
-              optionLabel="name_cn"
-              optionValue="id"
-              placeholder="选择要计算的指标"
-              display="chip"
-              :filter="true"
-              :filterFields="['name_cn', 'name_en', 'description']"
-              class="w-full"
-              :maxSelectedLabels="5"
-            >
-              <template #option="{ option }">
-                <div class="flex items-center gap-2">
-                  <div
-                    class="w-3 h-3 rounded-full"
-                    :style="{ backgroundColor: option.color }"
-                  ></div>
-                  <span>{{ option.name_cn }}</span>
-                  <span class="text-xs text-gray-500">({{ option.name_en }})</span>
-                  <Tag :value="option.category" size="small" severity="secondary" />
-                </div>
-              </template>
-              <template #optiongroup="{ option }">
-                <div class="flex items-center gap-2 font-bold">
-                  <i class="pi pi-chart-bar"></i>
-                  <span>{{ option }}</span>
-                </div>
-              </template>
-            </MultiSelect>
-            <label for="metrics">选择指标（必选，可多选）</label>
-          </FloatLabel>
-          <small class="text-gray-500 ml-2">支持搜索指标名称、英文名或描述</small>
-        </div>
-
-        <!-- 查询按钮 -->
-        <div class="flex justify-end gap-2">
-          <Button
+      <div class="flex justify-end items-center gap-2">
+        <Button
             label="重置"
             icon="pi pi-refresh"
             severity="secondary"
+            size="small"
             @click="() => {
               filters.time_dimension = ''
               filters.dimensions = []
               filters.metric_ids = []
               results = []
             }"
-          />
-          <Button
+        />
+        <Button
             label="查询数据"
+            size="small"
             icon="pi pi-search"
             @click="queryData"
             :loading="loading"
             severity="primary"
-          />
-        </div>
+        />
       </div>
-    </Panel>
-
-    <!-- 结果展示 -->
-    <Panel
-      v-if="results.length > 0"
-      :header="`分析结果 (${totalRows} 条记录)`"
-      :toggleable="true"
-      class="m-4"
+    </div>
+  </Panel>
+  <!-- 结果展示 -->
+  <!--    <Panel-->
+  <!--        v-if="results.length > 0"-->
+  <!--        :header="`分析结果 (${totalRows} 条记录)`"-->
+  <!--        :toggleable="true"-->
+  <!--        class="m-4"-->
+  <!--    >-->
+  <!--       无分组 - 显示汇总卡片 -->
+  <!--      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">-->
+  <!--        <Card-->
+  <!--            v-for="metric in (results as MetricResult[])"-->
+  <!--            :key="metric.metric_id"-->
+  <!--            class="shadow-sm"-->
+  <!--        >-->
+  <!--          <template #content>-->
+  <!--            <div :style="getMetricColorStyle(metric.color)">-->
+  <!--              <div class="text-sm text-gray-600 mb-1">{{ metric.display_name }}</div>-->
+  <!--              <div class="text-2xl font-bold">-->
+  <!--                {{ formatMetricValue(metric) }}-->
+  <!--              </div>-->
+  <!--              <div class="text-xs text-gray-500 mt-1">{{ metric.key }}</div>-->
+  <!--            </div>-->
+  <!--          </template>-->
+  <!--        </Card>-->
+  <!--      </div>-->
+  <!--      &lt;!&ndash; 有分组 - 显示数据表格 &ndash;&gt;-->
+  <!--      <div>-->
+  <!--      </div>-->
+  <!--    </Panel>-->
+  <div>
+    <DataTable
+        :value="results"
+        :paginator="true"
+        :first="(filters.page - 1) * filters.per_page"
+        :rows="filters.per_page"
+        :totalRecords="totalRows"
+        :lazy="true"
+        @page="(e) => {
+              filters.page = e.page + 1
+              filters.per_page = e.rows
+              queryData()
+            }"
+        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+        :rowsPerPageOptions="[10, 20, 50]"
+        currentPageReportTemplate="显示 {first} 到 {last} 条,共 {totalRecords} 条"
+        stripedRows
+        :loading="loading"
+        scrollable
+        :sort-order="filters.order_direction"
+        :sort-field="filters.order_by"
+        @sort="(e) => {
+              filters.order_by = e.sortField
+              console.log(e.sortOrder)
+              filters.order_direction = e.sortOrder
+              queryData()
+            }"
+        show-gridlines
+        size="small"
+        scrollHeight="600px"
+        class="ads-analytics-table m-4"
     >
-      <!-- 无分组 - 显示汇总卡片 -->
-      <div v-if="!hasGrouping" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card
-          v-for="metric in (results as MetricResult[])"
-          :key="metric.metric_id"
-          class="shadow-sm"
-        >
-          <template #content>
-            <div :style="getMetricColorStyle(metric.color)">
-              <div class="text-sm text-gray-600 mb-1">{{ metric.name_cn }}</div>
-              <div class="text-2xl font-bold">
-                {{ formatMetricValue(metric) }}
-              </div>
-              <div class="text-xs text-gray-500 mt-1">{{ metric.name_en }}</div>
-            </div>
-          </template>
-        </Card>
-      </div>
+      <!-- 维度列 -->
+      <Column
+          v-for="col in tableDimensionColumns"
+          :key="col.field"
+          :field="col.field"
+          :header="col.header"
+          :sortable="col.sortable"
+          :frozen="col.frozen"
+          :style="col.style"
+          :class="col.bodyClass"
+          :headerClass="col.headerClass"
+      >
+        <template #body="{ data }">
+          <!-- 平台字段 - 使用图标 + Tag -->
+          <div v-if="col.field === 'platform'" class="flex items-center gap-2">
+            <i :class="getPlatformInfo(data[col.field]).icon"
+               :style="{ color: getPlatformInfo(data[col.field]).color }"></i>
+            <Tag :value="commonDataStore.getPlatformName(data[col.field])"
+                 :severity="getPlatformInfo(data[col.field]).severity as any"/>
+          </div>
 
-      <!-- 有分组 - 显示数据表格 -->
-      <div v-else>
-        <DataTable
-          :value="results"
-          :paginator="true"
-          :rows="25"
-          :rowsPerPageOptions="[10, 25, 50, 100]"
-          stripedRows
-          showGridlines
-          :loading="loading"
-          scrollable
-          scrollHeight="600px"
-        >
-          <!-- 维度列 -->
-          <Column
-            v-for="col in getTableColumns()"
-            :key="col.field"
-            :field="col.field"
-            :header="col.header"
-            :sortable="col.sortable"
-            frozen
-          />
+          <!-- 项目字段 - 使用 Tag -->
+          <Tag v-else-if="col.field === 'project_id'"
+               :value="commonDataStore.getProjectName(data[col.field])"
+               severity="success"
+               icon="pi pi-folder"/>
 
-          <!-- 指标列 -->
-          <Column
-            v-for="metric in selectedMetrics"
-            :key="metric.id"
-            :header="metric.name_cn"
-            :sortable="true"
-          >
-            <template #header>
-              <div class="flex items-center gap-2">
-                <div
-                  class="w-3 h-3 rounded-full"
-                  :style="{ backgroundColor: metric.color }"
-                ></div>
-                <span>{{ metric.name_cn }}</span>
-              </div>
-            </template>
-            <template #body="{ data }">
-              <span v-if="data.metrics">
-                {{
-                  formatMetricValue(
-                    data.metrics.find((m: any) => m.metric_id === metric.id)
-                  )
-                }}
+          <!-- 账号字段 - 使用 Tag -->
+          <Tag v-else-if="col.field === 'ads_account_id'"
+               :value="commonDataStore.getAdsAccountName(data[col.field])"
+               severity="warn"
+               icon="pi pi-user"/>
+          <div v-else-if="['campaign_name', 'ad_set_name', 'ad_name', 'creative_name'].includes(col.field)"
+               v-tooltip.top="data[col.field]">
+            {{ formatDimensionValue(data[col.field], col.field) }}
+          </div>
+
+          <!-- 其他字段 - 普通显示 -->
+          <div v-else :title="data[col.field]">
+            {{ formatDimensionValue(data[col.field], col.field) }}
+          </div>
+        </template>
+      </Column>
+
+      <!-- 指标列 -->
+      <Column
+          v-for="col in tableMetricsColumns"
+          :key="col.field"
+          :field="col.field"
+          :sortable="col.sortable"
+          :frozen="col.frozen"
+          :style="col.style"
+          :class="col.bodyClass"
+          :headerClass="col.headerClass"
+          :bodyClass="`text-${col.align || 'right'}`"
+      >
+        <template #header="{ data }">
+          <div class="metric-value" v-tooltip.top="col.description">
+            {{ col.header }}
+          </div>
+        </template>
+        <template #body="{ data }">
+              <span v-if="data[col.field]" :style="{color: col.field.endsWith('p') ? '#000' : 'red'}" style="">
+                {{ formatValue(data[col.field], col, col.unit) }}
               </span>
-            </template>
-          </Column>
-        </DataTable>
-      </div>
-    </Panel>
+          <span v-else>-</span>
+        </template>
+      </Column>
+    </DataTable>
+  </div>
 
-    <!-- 空状态 -->
-    <div
-      v-if="!loading && results.length === 0"
-      class="text-center py-12 text-gray-500 bg-white m-4 rounded-lg"
-    >
-      <i class="pi pi-chart-bar text-6xl mb-4 text-gray-300"></i>
-      <p class="text-xl mb-2">请选择指标后查询数据</p>
-      <p class="text-sm text-gray-400">可选择时间维度和属性维度对数据进行分组分析</p>
-    </div>
+  <!-- 空状态 -->
+  <div v-if="!loading && results.length === 0"
+       class="text-center py-12 text-gray-500 bg-white m-4 rounded-lg">
+    <i class="pi pi-chart-bar text-6xl mb-4 text-gray-300"></i>
+    <p class="text-xl mb-2">请选择指标后查询数据</p>
+    <p class="text-sm text-gray-400">可选择时间维度和属性维度对数据进行分组分析</p>
+  </div>
 
-    <!-- 加载状态 -->
-    <div v-if="loading" class="flex justify-center items-center py-12 bg-white m-4 rounded-lg">
-      <ProgressSpinner />
-    </div>
+  <!-- 加载状态 -->
+  <div v-if="loading" class="flex justify-center items-center py-12 bg-white m-4 rounded-lg">
+    <ProgressSpinner/>
   </div>
 </template>
 
@@ -491,16 +530,39 @@ onMounted(async () => {
   background-color: #f5f5f5;
 }
 
-:deep(.p-card-content) {
-  padding: 1rem;
-}
-
 :deep(.p-datatable .p-datatable-thead > tr > th) {
   background-color: #f8f9fa;
   font-weight: 600;
+  white-space: nowrap;
 }
 
-:deep(.p-datatable .p-datatable-frozen-column) {
-  background-color: #ffffff;
+/* 表格单元格样式 */
+:deep(.ads-analytics-table .p-datatable-tbody > tr > td) {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0.65rem;
+  font-size: 13px;
+}
+
+/* 悬停显示完整内容 */
+:deep(.ads-analytics-table th) {
+  text-overflow: ellipsis;
+  padding: 1rem;
+  font-size: 13px;
+  background: #f3f4f6;
+}
+
+
+/* 悬停显示完整内容 */
+:deep(.ads-analytics-table .p-datatable-tbody > tr > td:hover) {
+  overflow: visible;
+  white-space: normal;
+}
+
+/* 货币和数字右对齐 */
+:deep(.ads-analytics-table .metric-value) {
+  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  font-variant-numeric: tabular-nums;
 }
 </style>

@@ -18,8 +18,8 @@
 ```typescript
 interface Metric {
   id: number
-  name_cn: string
-  name_en: string
+  display_name: string
+  key: string
   description: string
   sql_expression: string
   unit: string
@@ -31,8 +31,8 @@ interface Metric {
 
 interface MetricResult {
   metric_id: number
-  name_cn: string
-  name_en: string
+  display_name: string
+  key: string
   value: any
   formatted_value: string
   unit: string

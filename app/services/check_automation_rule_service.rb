@@ -15,24 +15,26 @@ class CheckAutomationRuleService
     if matched_ads.any?
       Rails.logger.info "Rule #{rule.id} matched #{matched_ads.count} ads"
       matched_ads.each do |ad_info|
-        begin
-          AutomationLog.create({
-                                 project: project,
-                                 action_type: "规则触发",
-                                 action: "自动化规则触发",
-                                 duration: 0,
-                                 status: "success",
-                                 remark: ad_info.merge({
-                                                         action: rule.action,
-                                                         rule: rule.as_json,
-                                                         project_name: project.name,
-                                                         time_zone: get_timezone,
-                                                         ads_account_name: AdsAccount.find(ad_info['ads_account_id']).name
-                                                       }),
-                               })
-        rescue => e
-          Rails.logger.error "Failed to create automation log: #{e.message}"
-        end
+        ad = AdState.find_by(ad_id: ad_info['ad_id'])
+
+        AutomationLog.create({
+                               project: project,
+                               action_type: "规则触发",
+                               action: "自动化规则触发",
+                               duration: 0,
+                               status: "success",
+                               remark: ad_info.merge({
+                                                       action: rule.action,
+                                                       rule: rule.as_json,
+                                                       project_name: project.name,
+                                                       time_zone: get_timezone,
+                                                       ads_account_name: AdsAccount.find(ad_info['ads_account_id']).name,
+                                                       thumbnail_url: ad&.thumbnail_url,
+                                                       ad_is_active: ad&.is_active,
+                                                       ad_status: ad&.status,
+                                                       ad_status_updated_at: ad&.updated_at,
+                                                     }),
+                             })
       end
       execute_action(matched_ads)
     else
@@ -50,32 +52,71 @@ class CheckAutomationRuleService
       WHERE #{condition_time_range}
         AND #{condition_project}
         AND (#{condition_by_rule})
+        AND #{condition_active_status_ads}
       GROUP BY #{group_by_rule.join(', ')}
       HAVING #{having_conditions}
     SQL
   end
 
-  # 1. 根据 time_granularity 以及 time_range 计算出具体的开始时间
+  def condition_active_status_ads
+    "ad_id IN (SELECT ad_id FROM ad_states WHERE is_active = 1)"
+  end
+
+  # 1. 根据时间类型计算时间范围条件
   def condition_time_range
     timezone = get_timezone
     current_time = Time.current.in_time_zone(timezone)
 
+    if rule.time_type == 'range' && rule.time_range_config.present?
+      # 使用日期范围配置
+      build_range_time_condition(rule.time_range_config, current_time)
+    else
+      # 使用最近时间配置
+      build_recent_time_condition(current_time)
+    end
+  end
+
+  # 构建最近时间条件（原逻辑）
+  def build_recent_time_condition(current_time)
     case rule.time_granularity
     when 'day'
       # 最近N天：根据 date 字段计算
       start_date = current_time - rule.time_range.days
-      end_date = current_time
-
-      "date >= '#{start_date.to_date}' AND date <= '#{end_date.to_date}'"
+      "date >= '#{start_date.to_date}' AND date <= '#{current_time.to_date}'"
     when 'hour'
       # 最近N小时：根据 date 和 hour 字段计算
       start_time = current_time - rule.time_range.hours
-      end_time = current_time
-
-      build_hour_range_condition(start_time, end_time)
+      "datetime >= '#{start_time.strftime('%Y-%m-%d %H:00:00')}' AND datetime <= '#{current_time.strftime('%Y-%m-%d %H:59:59')}'"
     else
       raise "Unsupported time_granularity: #{rule.time_granularity}"
     end
+  end
+
+  # 构建日期范围条件
+  def build_range_time_condition(config, current_time)
+    start_date_config = config['start_date']
+    end_date_config = config['end_date']
+
+    # 计算开始日期
+    start_date = if start_date_config['type'] == 'absolute'
+                   Date.parse(start_date_config['date'].to_s)
+                 else
+                   # relative: date 是负数，表示距今天数
+                   days_ago = start_date_config['date'].to_i.abs
+                   current_time.to_date - days_ago.days
+                 end
+
+    # 计算结束日期
+    end_date = if end_date_config['type'] == 'absolute'
+                 Date.parse(end_date_config['date'].to_s)
+               else
+                 # relative: date 是负数，表示距今天数
+                 days_ago = end_date_config['date'].to_i.abs
+                 current_time.to_date - days_ago.days
+               end
+
+    # 日期范围条件统一使用 date 字段
+    "date >= '#{start_date}' AND date <= '#{end_date}'"
   end
 
   # 2. 处理 condition_group 条件，拼接出一个 condition 语句
@@ -85,7 +126,7 @@ class CheckAutomationRuleService
 
   # 分组字段
   def group_by_rule
-    %w[platform project_id ads_account_id campaign_name adset_name ad_name]
+    %w[platform project_id ads_account_id campaign_name campaign_id adset_name adset_id ad_name ad_id]
   end
 
   private
@@ -94,45 +135,22 @@ class CheckAutomationRuleService
   def find_matching_ads
     query = build_query
     Rails.logger.info "Executing query: #{query}"
-
-    result = AdsData.connection.execute(query)
-    result.map { |row| group_by_rule.zip(row).to_h }
-  end
-
-  # 构建小时范围条件
-  def build_hour_range_condition(start_time, end_time)
-    start_date = start_time.to_date
-    end_date = end_time.to_date
-    start_hour = start_time.hour
-    end_hour = end_time.hour
-
-    if start_date == end_date
-      # 同一天内
-      "date = '#{start_date}' AND hour >= '#{format_hour(start_hour)}' AND hour <= '#{format_hour(end_hour)}'"
-    else
-      # 跨天处理
-      conditions = []
-
-      # 第一天：从 start_hour 到 23
-      conditions << "(date = '#{start_date}' AND hour >= '#{format_hour(start_hour)}')"
-
-      # 中间的完整天数
-      if (end_date - start_date).to_i > 1
-        middle_start = start_date + 1.day
-        middle_end = end_date - 1.day
-        conditions << "(date >= '#{middle_start}' AND date <= '#{middle_end}')"
-      end
-
-      # 最后一天：从 00 到 end_hour
-      conditions << "(date = '#{end_date}' AND hour <= '#{format_hour(end_hour)}')"
-
-      "(#{conditions.join(' OR ')})"
+    begin
+      result = AdsData.connection.execute(query)
+    rescue => e
+      Rails.logger.error "Failed to execute query: #{e.message}"
+      AutomationLog.log_action(
+        project: project,
+        action_type: "规则触发",
+        action: "自动化规则触发",
+        duration: 0,
+        status: "failed",
+        remark: {
+          error: e.message,
+          query: query,
+        })
     end
-  end
-
-  # 格式化小时为两位数字符串 (00-23)
-  def format_hour(hour)
-    hour.to_s.rjust(2, '0')
+    result&.map { |row| group_by_rule.zip(row).to_h } || []
   end
 
   # 构建项目条件
@@ -157,7 +175,6 @@ class CheckAutomationRuleService
         conditions << condition_str if condition_str != '1=1'
       end
     end
-
     conditions.any? ? conditions.join(" #{logic_operator} ") : '1=1'
   end
 
@@ -168,16 +185,13 @@ class CheckAutomationRuleService
     value = condition['value']
     metric_type = condition['metricType']
 
-    # 映射前端字段名到数据库字段名
-    db_field = map_metric_to_db_field(metric)
-
     case metric_type
     when 'numeric'
       # 数值类型条件将在 HAVING 子句中处理，这里返回占位符
       '1=1'
     when 'string'
       # 字符串类型条件直接在 WHERE 中处理
-      build_string_condition(db_field, operator, value)
+      build_string_condition(metric, operator, value)
     else
       '1=1'
     end
@@ -213,53 +227,8 @@ class CheckAutomationRuleService
   # 构建数值条件（用于 HAVING 子句）
   # 注意：因为是聚合运算，所以数值类型的字段要进行 SUM 后再运算
   def build_numeric_condition(condition)
-    metric = condition['metric']
-    operator = condition['operator']
-    value = condition['value']
-
-    db_field = map_metric_to_db_field(metric)
-    sql_operator = map_operator_to_sql(operator)
-
-    # 需要 SUM 聚合的数值字段（累计指标）
-    sum_fields = %w[
-      impressions clicks spend reach conversions purchases
-      video_views video_views_3s video_views_10s video_views_15s
-      likes comments shares saves follows
-      link_clicks post_engagements app_installs app_launches
-      registrations add_to_carts checkouts
-    ]
-
-    # 需要从基础指标计算的字段
-    calculated_fields = {
-      'cpm' => '(SUM(spend) / NULLIF(SUM(impressions), 0)) * 1000',
-      'cpc' => 'SUM(spend) / NULLIF(SUM(clicks), 0)',
-      'cpi' => 'SUM(spend) / NULLIF(SUM(app_installs), 0)',
-      'cost_per_purchase' => 'SUM(spend) / NULLIF(SUM(purchases), 0)',
-      'ctr' => '(SUM(clicks) / NULLIF(SUM(impressions), 0)) * 100',
-      'cvr' => '(SUM(conversions) / NULLIF(SUM(clicks), 0)) * 100',
-      'cost_per_conversion' => 'SUM(spend) / NULLIF(SUM(conversions), 0)',
-      'roas' => 'SUM(conversion_value) / NULLIF(SUM(spend), 0)'
-    }
-
-    # 需要 AVG 聚合的字段（真正的平均值指标）
-    avg_fields = %w[
-      frequency quality_score relevance_score
-      video_avg_play_time budget_used_percent
-    ]
-
-    if calculated_fields.key?(db_field)
-      # 计算型指标：从基础指标计算
-      "(#{calculated_fields[db_field]}) #{sql_operator} #{value}"
-    elsif sum_fields.include?(db_field)
-      # 累计型指标：直接 SUM
-      "SUM(#{db_field}) #{sql_operator} #{value}"
-    elsif avg_fields.include?(db_field)
-      # 平均值指标：使用 AVG
-      "AVG(#{db_field}) #{sql_operator} #{value}"
-    else
-      # 默认使用 SUM
-      "SUM(#{db_field}) #{sql_operator} #{value}"
-    end
+    metric = AdsMetric.find_by(key: condition['metric'])
+    "(#{metric.sql_expression}) #{condition['operator']} #{condition['value']}"
   end
 
   # 构建字符串条件
@@ -278,74 +247,6 @@ class CheckAutomationRuleService
     else
       '1=1'
     end
-  end
-
-  # 映射操作符到SQL
-  def map_operator_to_sql(operator)
-    case operator
-    when 'gt'
-      '>'
-    when 'lt'
-      '<'
-    when 'eq', 'equals'
-      '='
-    when 'gte'
-      '>='
-    when 'lte'
-      '<='
-    when 'ne', 'not_equals'
-      '!='
-    else
-      '='
-    end
-  end
-
-  # 映射前端指标名到数据库字段名
-  def map_metric_to_db_field(metric)
-    metric_mapping = {
-      # 字符串字段
-      'account_name' => 'ads_account_id', # 简化处理，实际需要 JOIN
-      'campaign_name' => 'campaign_name',
-      'adset_name' => 'adset_name',
-      'ad_name' => 'ad_name',
-
-      # 核心指标
-      'impressions' => 'impressions',
-      'clicks' => 'clicks',
-      'spend' => 'spend',
-      'reach' => 'reach',
-
-      # 计算指标（这些在 HAVING 子句中会被特殊处理，从基础指标计算）
-      'cpm' => 'cpm',
-      'cpc' => 'cpc',
-      'ctr' => 'ctr',
-      'cpi' => 'cpi',
-      'cvRate' => 'cvr',
-
-      # 转化指标
-      'conversions' => 'conversions',
-      'purchases' => 'purchases',
-      'conversion_value' => 'conversion_value',
-      'roas' => 'roas',
-      'cost_per_conversion' => 'cost_per_conversion',
-      'installs' => 'app_installs',
-
-      # 视频指标
-      'video_views' => 'video_views',
-      'video_views_3s' => 'video_views_3s',
-
-      # 互动指标
-      'likes' => 'likes',
-      'comments' => 'comments',
-      'shares' => 'shares',
-      'link_clicks' => 'link_clicks',
-      'post_engagements' => 'post_engagements',
-
-      # 应用指标
-      'app_installs' => 'app_installs'
-    }
-
-    metric_mapping[metric] || metric
   end
 
   # 获取时区 - 使用项目的时区

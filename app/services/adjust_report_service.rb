@@ -13,6 +13,9 @@ class AdjustReportService
     campaign_network
     adgroup_network
     creative_network
+    campaign_id_network
+    adgroup_id_network
+    creative_id_network
   ].freeze
 
   # Adjust API 指标

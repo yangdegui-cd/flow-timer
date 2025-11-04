@@ -12,13 +12,27 @@ export interface AutomationCondition {
   children?: AutomationCondition[]
 }
 
+// 时间范围配置类型
+export interface TimeRangeConfig {
+  start_date: {
+    type: 'absolute' | 'relative'
+    date: string | number
+  }
+  end_date: {
+    type: 'absolute' | 'relative'
+    date: string | number
+  }
+}
+
 // 自动化规则类型
 export interface AutomationRule {
   id: number
   project_id: number
   name: string
+  time_type: 'recent' | 'range'
   time_granularity: 'hour' | 'day'
   time_range: number
+  time_range_config?: TimeRangeConfig
   condition_group: AutomationCondition
   action: string
   action_value?: number
@@ -30,8 +44,10 @@ export interface AutomationRule {
 // 创建/更新规则请求类型
 export interface AutomationRuleFormData {
   name: string
+  time_type: 'recent' | 'range'
   time_granularity: 'hour' | 'day'
   time_range: number
+  time_range_config?: TimeRangeConfig
   condition_group: AutomationCondition
   action: string
   action_value?: number

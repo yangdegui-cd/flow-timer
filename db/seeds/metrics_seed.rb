@@ -4,8 +4,8 @@ puts "开始创建指标配置..."
 metrics_data = [
   # 数量指标 - 平台数据
   {
-    name_cn: '展示(平台)',
-    name_en: 'impressions_p',
+    display_name: '展示(平台)',
+    key: 'impressions_p',
     description: '广告展示次数，统计来源于广告平台报告',
     sql_expression: 'SUM(impressions)',
     unit: '次',
@@ -17,8 +17,8 @@ metrics_data = [
     sort_order: 1
   },
   {
-    name_cn: '点击(平台)',
-    name_en: 'clicks_p',
+    display_name: '点击(平台)',
+    key: 'clicks_p',
     description: '广告点击次数，统计来源于广告平台报告',
     sql_expression: 'SUM(clicks)',
     unit: '次',
@@ -30,8 +30,8 @@ metrics_data = [
     sort_order: 2
   },
   {
-    name_cn: '安装(平台)',
-    name_en: 'installs_p',
+    display_name: '安装(平台)',
+    key: 'installs_p',
     description: '应用安装次数，统计来源于广告平台报告',
     sql_expression: 'SUM(installs)',
     unit: '次',
@@ -43,8 +43,8 @@ metrics_data = [
     sort_order: 3
   },
   {
-    name_cn: '转化(平台)',
-    name_en: 'conversions_p',
+    display_name: '转化(平台)',
+    key: 'conversions_p',
     description: '转化次数，统计来源于广告平台报告',
     sql_expression: 'SUM(conversions)',
     unit: '次',
@@ -58,8 +58,8 @@ metrics_data = [
 
   # 数量指标 - Adjust数据
   {
-    name_cn: '安装(Adjust)',
-    name_en: 'installs_a',
+    display_name: '安装(Adjust)',
+    key: 'installs_a',
     description: '应用安装次数，统计来源于Adjust归因数据',
     sql_expression: 'SUM(adjust_install)',
     unit: '次',
@@ -73,8 +73,8 @@ metrics_data = [
 
   # 成本指标 - 平台数据
   {
-    name_cn: '花费(平台)',
-    name_en: 'spend_p',
+    display_name: '花费(平台)',
+    key: 'spend_p',
     description: '广告总花费，统计来源于广告平台报告',
     sql_expression: 'SUM(spend)',
     unit: '$',
@@ -86,8 +86,8 @@ metrics_data = [
     sort_order: 10
   },
   {
-    name_cn: 'CPM(平台)',
-    name_en: 'cpm_p',
+    display_name: 'CPM(平台)',
+    key: 'cpm_p',
     description: '千次展示成本，计算方式：(总花费 / 展示次数) × 1000',
     sql_expression: '(SUM(spend) / NULLIF(SUM(impressions), 0)) * 1000',
     unit: '$',
@@ -99,8 +99,8 @@ metrics_data = [
     sort_order: 11
   },
   {
-    name_cn: 'CPC(平台)',
-    name_en: 'cpc_p',
+    display_name: 'CPC(平台)',
+    key: 'cpc_p',
     description: '单次点击成本，计算方式：总花费 / 点击次数',
     sql_expression: 'SUM(spend) / NULLIF(SUM(clicks), 0)',
     unit: '$',
@@ -112,8 +112,8 @@ metrics_data = [
     sort_order: 12
   },
   {
-    name_cn: 'CPI(平台)',
-    name_en: 'cpi_p',
+    display_name: 'CPI(平台)',
+    key: 'cpi_p',
     description: '单次安装成本，计算方式：总花费 / 安装次数',
     sql_expression: 'SUM(spend) / NULLIF(SUM(installs), 0)',
     unit: '$',
@@ -125,8 +125,8 @@ metrics_data = [
     sort_order: 13
   },
   {
-    name_cn: '单次转化成本(平台)',
-    name_en: 'cost_per_conversion_p',
+    display_name: '单次转化成本(平台)',
+    key: 'cost_per_conversion_p',
     description: '单次转化成本，计算方式：总花费 / 转化次数',
     sql_expression: 'SUM(spend) / NULLIF(SUM(conversions), 0)',
     unit: '$',
@@ -140,8 +140,8 @@ metrics_data = [
 
   # 成本指标 - Adjust数据
   {
-    name_cn: '花费(Adjust)',
-    name_en: 'spend_a',
+    display_name: '花费(Adjust)',
+    key: 'spend_a',
     description: '广告总花费，统计来源于Adjust归因数据',
     sql_expression: 'SUM(adjust_spend)',
     unit: '$',
@@ -153,8 +153,8 @@ metrics_data = [
     sort_order: 15
   },
   {
-    name_cn: 'CPM(Adjust)',
-    name_en: 'cpm_a',
+    display_name: 'CPM(Adjust)',
+    key: 'cpm_a',
     description: '千次展示成本，计算方式：(Adjust花费 / 展示次数) × 1000',
     sql_expression: '(SUM(adjust_spend) / NULLIF(SUM(impressions), 0)) * 1000',
     unit: '$',
@@ -166,8 +166,8 @@ metrics_data = [
     sort_order: 16
   },
   {
-    name_cn: 'CPC(Adjust)',
-    name_en: 'cpc_a',
+    display_name: 'CPC(Adjust)',
+    key: 'cpc_a',
     description: '单次点击成本，计算方式：Adjust花费 / 点击次数',
     sql_expression: 'SUM(adjust_spend) / NULLIF(SUM(clicks), 0)',
     unit: '$',
@@ -179,8 +179,8 @@ metrics_data = [
     sort_order: 17
   },
   {
-    name_cn: 'CPI(Adjust)',
-    name_en: 'cpi_a',
+    display_name: 'CPI(Adjust)',
+    key: 'cpi_a',
     description: '单次安装成本，计算方式：Adjust花费 / Adjust安装次数',
     sql_expression: 'SUM(adjust_spend) / NULLIF(SUM(adjust_install), 0)',
     unit: '$',
@@ -194,8 +194,8 @@ metrics_data = [
 
   # 率指标
   {
-    name_cn: 'CTR(平台)',
-    name_en: 'ctr_p',
+    display_name: 'CTR(平台)',
+    key: 'ctr_p',
     description: '点击率，计算方式：(点击次数 / 展示次数) × 100%',
     sql_expression: '(SUM(clicks) / NULLIF(SUM(impressions), 0)) * 100',
     unit: '%',
@@ -207,8 +207,8 @@ metrics_data = [
     sort_order: 20
   },
   {
-    name_cn: 'CVR(平台)',
-    name_en: 'cvr_p',
+    display_name: 'CVR(平台)',
+    key: 'cvr_p',
     description: '转化率，计算方式：(转化次数 / 点击次数) × 100%',
     sql_expression: '(SUM(conversions) / NULLIF(SUM(clicks), 0)) * 100',
     unit: '%',
@@ -222,8 +222,8 @@ metrics_data = [
 
   # 收入指标 - Adjust数据
   {
-    name_cn: '同期群收入(Adjust)',
-    name_en: 'cohort_all_revenue_a',
+    display_name: '同期群收入(Adjust)',
+    key: 'cohort_all_revenue_a',
     description: '同期群总收入，统计来源于Adjust归因数据',
     sql_expression: 'SUM(cohort_all_revenue)',
     unit: '$',
@@ -235,8 +235,8 @@ metrics_data = [
     sort_order: 30
   },
   {
-    name_cn: 'ROAS(Adjust)',
-    name_en: 'roas_a',
+    display_name: 'ROAS(Adjust)',
+    key: 'roas_a',
     description: '广告支出回报率，计算方式：同期群总收入 / Adjust花费',
     sql_expression: 'SUM(cohort_all_revenue) / NULLIF(SUM(adjust_spend), 0)',
     unit: '',
@@ -252,8 +252,8 @@ metrics_data = [
 # D0-D6 收入指标
 (0..6).each do |day|
   metrics_data << {
-    name_cn: "同期群收入D#{day}(Adjust)",
-    name_en: "revenue_d#{day}_a",
+    display_name: "同期群收入D#{day}(Adjust)",
+    key: "revenue_d#{day}_a",
     description: "D#{day}天收入，统计来源于Adjust归因数据",
     sql_expression: "SUM(all_revenue_total_d#{day})",
     unit: '$',
@@ -266,8 +266,8 @@ metrics_data = [
   }
 
   metrics_data << {
-    name_cn: "ROAS D#{day}(Adjust)",
-    name_en: "roas_d#{day}_a",
+    display_name: "ROAS D#{day}(Adjust)",
+    key: "roas_d#{day}_a",
     description: "D#{day}天广告支出回报率，计算方式：D#{day}收入 / Adjust花费",
     sql_expression: "SUM(all_revenue_total_d#{day}) / NULLIF(SUM(adjust_spend), 0)",
     unit: '',
@@ -280,8 +280,8 @@ metrics_data = [
   }
 
   metrics_data << {
-    name_cn: "LTV D#{day}(Adjust)",
-    name_en: "ltv_d#{day}_a",
+    display_name: "LTV D#{day}(Adjust)",
+    key: "ltv_d#{day}_a",
     description: "D#{day}天用户生命周期价值，计算方式：D#{day}收入 / Adjust安装次数",
     sql_expression: "SUM(all_revenue_total_d#{day}) / NULLIF(SUM(adjust_install), 0)",
     unit: '$',
@@ -297,8 +297,8 @@ end
 # D0-D6 留存指标
 (0..6).each do |day|
   metrics_data << {
-    name_cn: "留存人数D#{day}(Adjust)",
-    name_en: "retained_users_d#{day}_a",
+    display_name: "留存人数D#{day}(Adjust)",
+    key: "retained_users_d#{day}_a",
     description: "D#{day}天留存用户数，统计来源于Adjust归因数据",
     sql_expression: "SUM(retained_users_d#{day})",
     unit: '人',
@@ -311,8 +311,8 @@ end
   }
 
   metrics_data << {
-    name_cn: "留存率D#{day}(Adjust)",
-    name_en: "retention_rate_d#{day}_a",
+    display_name: "留存率D#{day}(Adjust)",
+    key: "retention_rate_d#{day}_a",
     description: "D#{day}天留存率，计算方式：D#{day}留存用户数 / Adjust安装次数 × 100%",
     sql_expression: "SUM(retained_users_d#{day}) / NULLIF(SUM(adjust_install), 0) * 100",
     unit: '%',
@@ -325,8 +325,8 @@ end
   }
 
   metrics_data << {
-    name_cn: "付费人数D#{day}(Adjust)",
-    name_en: "paying_users_d#{day}_a",
+    display_name: "付费人数D#{day}(Adjust)",
+    key: "paying_users_d#{day}_a",
     description: "D#{day}天付费用户数，统计来源于Adjust归因数据",
     sql_expression: "SUM(paying_users_d#{day})",
     unit: '人',
@@ -341,15 +341,15 @@ end
 
 # 批量创建或更新指标
 metrics_data.each do |data|
-  metric = Metric.find_or_initialize_by(name_en: data[:name_en])
+  metric = AdsMetric.find_or_initialize_by(key: data[:key])
   metric.assign_attributes(data)
 
   if metric.save
-    puts "✓ 创建/更新指标: #{data[:name_cn]} (#{data[:name_en]})"
+    puts "✓ 创建/更新指标: #{data[:display_name]} (#{data[:key]})"
   else
-    puts "✗ 创建指标失败: #{data[:name_cn]} - #{metric.errors.full_messages.join(', ')}"
+    puts "✗ 创建指标失败: #{data[:display_name]} - #{metric.errors.full_messages.join(', ')}"
   end
 end
 
 puts "指标配置创建完成！"
-puts "总共创建了 #{Metric.count} 个指标"
+puts "总共创建了 #{AdsMetric.count} 个指标"

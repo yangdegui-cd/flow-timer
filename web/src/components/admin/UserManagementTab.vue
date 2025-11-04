@@ -13,7 +13,7 @@ import Password from 'primevue/password'
 import { useConfirm } from 'primevue/useconfirm'
 
 import userApi from '@/api/user-api'
-import type { User, CreateUserRequest, UpdateUserRequest } from '@/api/user-api'
+import type { CreateUserRequest, UpdateUserRequest } from '@/api/user-api'
 import AssignRolesDialog from '@/views/_dialogs/AssignRolesDialog.vue'
 
 const toast = useToast()
@@ -308,19 +308,19 @@ onMounted(() => {
       <Column header="操作" style="width: 200px">
         <template #body="{ data }">
           <div class="flex gap-2">
-            <Button 
-              icon="pi pi-users" 
-              size="small" 
-              outlined 
+            <Button
+              icon="pi pi-users"
+              size="small"
+              outlined
               v-tooltip="'分配角色'"
-              @click="openAssignRolesDialog(data)" 
+              @click="openAssignRolesDialog(data)"
             />
-            <Button 
-              icon="pi pi-pencil" 
-              size="small" 
-              outlined 
+            <Button
+              icon="pi pi-pencil"
+              size="small"
+              outlined
               v-tooltip="'编辑用户'"
-              @click="openEditDialog(data)" 
+              @click="openEditDialog(data)"
             />
             <Button
               v-if="data.status === 'active'"
@@ -340,13 +340,13 @@ onMounted(() => {
               v-tooltip="'激活用户'"
               @click="changeUserStatus(data, 'active')"
             />
-            <Button 
-              icon="pi pi-trash" 
-              size="small" 
-              severity="danger" 
-              outlined 
+            <Button
+              icon="pi pi-trash"
+              size="small"
+              severity="danger"
+              outlined
               v-tooltip="'删除用户'"
-              @click="deleteUser(data)" 
+              @click="deleteUser(data)"
             />
           </div>
         </template>

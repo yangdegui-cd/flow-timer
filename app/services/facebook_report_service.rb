@@ -274,6 +274,7 @@ class FacebookReportService
 
   # 生成宽表数据记录
   def generate_ads_data(insight, campaign, adset, ad)
+
     # 解析日期
     date_start = insight['date_start']
     date = Date.parse(date_start)

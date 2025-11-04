@@ -61,7 +61,14 @@ const notificationConfig = ref<Config>({
   facebook_access_token: '',
   facebook_token_expired_at: '',
   website_base_url: window.location.origin,
-  facebook_auth_callback_url: window.location.origin
+  facebook_auth_callback_url: window.location.origin,
+  google_ads_client_id: '',
+  google_ads_client_secret: '',
+  google_ads_developer_token: '',
+  google_ads_refresh_token: '',
+  google_ads_customer_id: '',
+  api_domain: '',
+  api_use_ssl: false,
 });
 
 // 安全设置
@@ -466,6 +473,15 @@ onMounted(() => {
                 </div>
 
                 <div>
+                  <label class="block text-sm font-medium mb-2">站点域名</label>
+                  <InputText
+                      v-model="notificationConfig.api_domain"
+                      class="w-full"
+                  />
+                  <small class="text-gray-500">用于授权回调地址, 不设置无法授权账号</small>
+                </div>
+
+                <div>
                   <label class="block text-sm font-medium mb-2">前端地址</label>
                   <InputText
                       v-model="notificationConfig.website_base_url"
@@ -565,6 +581,10 @@ onMounted(() => {
               </div>
 
               <div class="space-y-3">
+                <div class="flex items-center gap-3">
+                  <Checkbox v-model="notificationConfig.api_use_ssl" binary/>
+                  <label class="text-sm font-medium">启用SSl访问API</label>
+                </div>
                 <div class="flex items-center gap-3">
                   <Checkbox v-model="systemSettings.enableNotifications" binary/>
                   <label class="text-sm font-medium">启用系统通知</label>

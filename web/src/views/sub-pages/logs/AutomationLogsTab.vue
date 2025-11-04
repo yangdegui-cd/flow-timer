@@ -18,6 +18,7 @@ import projectApi from '@/api/project-api'
 import { format } from 'date-fns'
 import useSyncUrlParams from "@/utils/syncUrlParams"
 import { actionOptions, getActionLabel, getActionSeverity } from '@/data/options/automation-actions'
+import AutomationLogDetail from "@/views/_details/AutomationLogDetail.vue";
 
 const props = defineProps<{
   projectId?: number
@@ -223,11 +224,6 @@ const getActionTypeSeverity = (actionType: string) => {
 // 格式化日期时间
 const formatDateTime = (dateStr: string) => {
   return format(new Date(dateStr), 'yyyy-MM-dd HH:mm:ss')
-}
-
-// 格式化JSON
-const formatJson = (obj: any) => {
-  return JSON.stringify(obj, null, 2)
 }
 
 // 处理筛选面板折叠/展开
@@ -549,106 +545,7 @@ onMounted(async () => {
         :style="{ width: '800px' }"
         class="compact-dialog"
     >
-      <div v-if="selectedLog" class="log-detail">
-        <!-- 第一行：触发规则、耗时、状态 -->
-        <div class="detail-row">
-          <div class="detail-card">
-            <div class="card-header">
-              <i class="pi pi-tag text-sm mr-2"></i>
-              操作类型
-            </div>
-            <div class="card-content">
-              <Tag :value="selectedLog.action_type" :severity="getActionTypeSeverity(selectedLog.action_type)"
-                   size="small"/>
-            </div>
-          </div>
-
-          <div class="detail-card">
-            <div class="card-header">
-              <i class="pi pi-check-circle text-sm mr-2"></i>
-              状态
-            </div>
-            <div class="card-content">
-              <Tag
-                  :value="selectedLog.display_status"
-                  :severity="selectedLog.status === 'success' ? 'success' : 'danger'"
-                  size="small"
-              />
-            </div>
-          </div>
-
-          <div class="detail-card">
-            <div class="card-header">
-              <i class="pi pi-bolt text-sm mr-2"></i>
-              触发规则
-            </div>
-            <div class="card-content">
-              <Tag
-                  :value="getActionLabel(selectedLog.remark.action)"
-                  :severity="getActionSeverity(selectedLog.remark.action)"
-                  size="small"
-              />
-            </div>
-          </div>
-        </div>
-
-        <!-- 第二行：操作类型、操作人、创建时间 -->
-        <div class="detail-row">
-          <div class="detail-card">
-            <div class="card-header">
-              <i class="pi pi-clock text-sm mr-2"></i>
-              耗时
-            </div>
-            <div class="card-content">
-              <span class="font-semibold">{{
-                  selectedLog.duration_in_seconds ? `${selectedLog.duration_in_seconds}秒` : '-'
-                }}</span>
-            </div>
-          </div>
-
-          <div class="detail-card">
-            <div class="card-header">
-              <i class="pi pi-user text-sm mr-2"></i>
-              操作人
-            </div>
-            <div class="card-content">
-              <span class="font-semibold">{{ selectedLog.sys_user?.name || '系统' }}</span>
-            </div>
-          </div>
-
-          <div class="detail-card">
-            <div class="card-header">
-              <i class="pi pi-calendar text-sm mr-2"></i>
-              创建时间
-            </div>
-            <div class="card-content">
-              <span class="font-semibold">{{ formatDateTime(selectedLog.created_at) }}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- 操作描述 -->
-        <div class="detail-card">
-          <div class="card-header">
-            <i class="pi pi-file-edit text-sm mr-2"></i>
-            操作描述
-          </div>
-          <div class="card-content">
-            <span class="font-semibold">{{ selectedLog.display_name }}</span>
-          </div>
-        </div>
-
-        <!-- 详细信息 -->
-        <div class="detail-card">
-          <div class="card-header">
-            <i class="pi pi-info-circle text-sm mr-2"></i>
-            详细信息
-          </div>
-          <div class="json-content">
-            <pre class="json-code">{{ formatJson(selectedLog.remark) }}</pre>
-          </div>
-        </div>
-      </div>
+      <AutomationLogDetail v-if="selectedLog" :log="selectedLog" />
     </Dialog>
   </div>
 </template>

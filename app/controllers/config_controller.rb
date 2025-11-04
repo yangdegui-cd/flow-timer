@@ -3,8 +3,8 @@
 class ConfigController < ApplicationController
   # 跳过 DefaultCrud 的 set_resource 回调，因为 Config 是单例资源
   skip_before_action :set_resource
-  skip_before_action :authenticate_user!, only: [:facebook_callback]
-  skip_before_action :validate_permission!, only: [:facebook_callback]
+  skip_before_action :authenticate_user!, only: [:facebook_callback, :google_callback]
+  skip_before_action :validate_permission!, only: [:facebook_callback, :google_callback]
 
   # GET /config
   def show
@@ -12,7 +12,17 @@ class ConfigController < ApplicationController
 
     # 屏蔽敏感信息
     config_data = config.as_json(
-      except: [:email_notification_pwd, :qy_wechat_notification_key, :adjust_api_token, :facebook_app_secret, :facebook_access_token]
+      except: [
+        :email_notification_pwd,
+        :qy_wechat_notification_key,
+        :adjust_api_token,
+        :facebook_app_secret,
+        :facebook_access_token,
+        :google_ads_client_secret,
+        :google_ads_refresh_token,
+        :google_ads_developer_token
+      ],
+      methods: [:facebook_auth_callback_url, :google_auth_callback_url]
     )
     render json: ok(config_data)
   end
@@ -28,6 +38,9 @@ class ConfigController < ApplicationController
     update_params.delete(:adjust_api_token) if update_params[:adjust_api_token].blank?
     update_params.delete(:facebook_app_secret) if update_params[:facebook_app_secret].blank?
     update_params.delete(:facebook_access_token) if update_params[:facebook_access_token].blank?
+    update_params.delete(:google_ads_client_secret) if update_params[:google_ads_client_secret].blank?
+    update_params.delete(:google_ads_refresh_token) if update_params[:google_ads_refresh_token].blank?
+    update_params.delete(:google_ads_developer_token) if update_params[:google_ads_developer_token].blank?
 
     if config.update(update_params)
       render json: ok(config, '配置更新成功')
@@ -101,19 +114,11 @@ class ConfigController < ApplicationController
   def facebook_auth_url
     config = Config.first
 
-    if config.blank? || config.facebook_app_id.blank?
-      render json: error('请先配置 Facebook App ID')
-      return
-    end
+    return render json: error('请先配置 Facebook App ID') if config.blank? || config.facebook_app_id.blank?
+    return render json: error('请先配置后端API域名') if config.api_domain.blank?
 
-    if config.facebook_auth_callback_url.blank?
-      render json: error('请先配置 Facebook 授权回调地址')
-      return
-    end
-
-    # 生成回调 URL: callback_url + /config/facebook_callback
-    redirect_uri = "#{config.facebook_auth_callback_url}/config/facebook_callback"
-    auth_url = FacebookTokenService.get_authorization_url(redirect_uri)
+    # 生成回调 URL
+    auth_url = FacebookTokenService.get_authorization_url(config.facebook_auth_callback_url)
 
     if auth_url.present?
       render json: ok({ auth_url: auth_url })
@@ -139,7 +144,7 @@ class ConfigController < ApplicationController
     end
 
     # 使用授权码交换访问令牌
-    redirect_uri = "#{config.facebook_auth_callback_url}/config/facebook_callback"
+    redirect_uri = build_callback_url(config, '/config/facebook_callback')
     result = FacebookTokenService.exchange_code_for_token(code, redirect_uri)
 
     if result[:success]
@@ -166,10 +171,80 @@ class ConfigController < ApplicationController
     redirect_to "#{config.website_base_url}/settings?tab=3&error=#{CGI.escape("授权失败: #{e.message}")}", allow_other_host: true
   end
 
+  # POST /config/test_google
+  def test_google
+    result = GoogleTokenService.validate_app_credentials
+
+    if result[:valid]
+      render json: ok(nil, result[:message])
+    else
+      render json: error(result[:message])
+    end
+  rescue => e
+    render json: error("Google Ads 凭证验证失败: #{e.message}")
+  end
+
+  # GET /config/google_auth_url
+  def google_auth_url
+    config = Config.first
+
+    return render json: error('请先配置 Google Ads Client ID') if config.blank? || config.google_ads_client_id.blank?
+    return render json: error('请先配置后端API域名') if config.api_domain.blank?
+
+    # 生成回调 URL
+    auth_url = GoogleTokenService.get_authorization_url(config.google_auth_callback_url)
+
+    if auth_url.present?
+      render json: ok({ auth_url: auth_url })
+    else
+      render json: error('生成授权 URL 失败')
+    end
+  rescue => e
+    render json: error("生成授权 URL 失败: #{e.message}")
+  end
+
+  # GET /config/google_callback
+  def google_callback
+    code = params[:code]
+    config = Config.first
+
+    if code.blank?
+      # 授权失败或用户取消
+      error = params[:error] || '授权失败'
+      error_description = params[:error_description] || '用户取消授权或授权过程出错'
+      redirect_to "#{config.website_base_url}/settings?tab=3&error=#{CGI.escape(error_description)}", allow_other_host: true
+      return
+    end
+
+    # 使用授权码交换 refresh_token
+    redirect_uri = config.google_auth_callback_url
+    result = GoogleTokenService.exchange_code_for_token(code, redirect_uri)
+
+    if result[:success] && result[:refresh_token].present?
+      # 保存 refresh_token 到配置
+      config.update!(
+        google_ads_refresh_token: result[:refresh_token]
+      )
+
+      redirect_to "#{config.website_base_url}/settings?tab=3&success=#{CGI.escape('Google Ads Refresh Token 获取成功')}", allow_other_host: true
+    else
+      error_message = result[:message] || 'Refresh Token 获取失败'
+      redirect_to "#{config.website_base_url}/settings?tab=3&error=#{CGI.escape(error_message)}", allow_other_host: true
+    end
+  rescue => e
+    Rails.logger.error "Google Ads 回调处理失败: #{e.message}"
+    config = Config.first
+    redirect_to "#{config.website_base_url}/settings?tab=3&error=#{CGI.escape("授权失败: #{e.message}")}", allow_other_host: true
+  end
+
   private
+
 
   def config_params
     params.require(:config).permit(
+      :website_base_url,
+      :api_domain,
+      :api_use_ssl,
       :use_email_notification,
       :smtp_server,
       :smtp_port,
@@ -186,8 +261,11 @@ class ConfigController < ApplicationController
       :facebook_app_secret,
       :facebook_access_token,
       :facebook_token_expired_at,
-      :website_base_url,
-      :facebook_auth_callback_url
+      :google_ads_client_id,
+      :google_ads_client_secret,
+      :google_ads_developer_token,
+      :google_ads_refresh_token,
+      :google_ads_customer_id
     )
   rescue ActionController::ParameterMissing
     # 如果没有包裹在 config 键中，直接使用顶层参数
@@ -209,7 +287,13 @@ class ConfigController < ApplicationController
       :facebook_access_token,
       :facebook_token_expired_at,
       :website_base_url,
-      :facebook_auth_callback_url
+      :api_domain,
+      :api_use_ssl,
+      :google_ads_client_id,
+      :google_ads_client_secret,
+      :google_ads_developer_token,
+      :google_ads_refresh_token,
+      :google_ads_customer_id
     )
   end
 

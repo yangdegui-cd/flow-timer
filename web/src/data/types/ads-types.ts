@@ -413,10 +413,10 @@ export interface ExportOptions {
   filters?: AdsDataFilters
 }
 
-export interface Metrics {
+export interface AdsMetric {
   id: number;
-  name_cn: string;
-  name_en: string;
+  display_name: string;
+  key: string;
   description?: string | null;
   sql_expression: string;
   unit?: string | null;
@@ -425,6 +425,19 @@ export interface Metrics {
   filter_min?: number | null;
   category?: string | null;
   data_source?: 'platform' | 'adjust' | 'calculated' | string | null;
+  sort_order?: number;
+  is_active?: boolean;
+  created_at: string; // or Date if you plan to convert to Date object
+  updated_at: string; // or Date if you plan to convert to Date object
+}
+
+export interface AdsDimension {
+  id: number;
+  display_name: string;
+  name: string;
+  description?: string | null;
+  column: string;
+  category?: string | null;
   sort_order?: number;
   is_active?: boolean;
   created_at: string; // or Date if you plan to convert to Date object

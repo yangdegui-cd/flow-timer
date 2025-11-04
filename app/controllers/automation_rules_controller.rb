@@ -185,6 +185,7 @@ class AutomationRulesController < ApplicationController
     # 提取允许的参数
     permitted = ActionController::Parameters.new(
       name: source_params[:name],
+      time_type: source_params[:time_type],
       time_granularity: source_params[:time_granularity],
       time_range: source_params[:time_range],
       action: source_params[:action],
@@ -195,6 +196,11 @@ class AutomationRulesController < ApplicationController
     # 单独处理condition_group，转换为Hash
     if source_params[:condition_group].present?
       permitted[:condition_group] = source_params[:condition_group].to_unsafe_h
+    end
+
+    # 单独处理time_range_config，转换为Hash
+    if source_params[:time_range_config].present?
+      permitted[:time_range_config] = source_params[:time_range_config].to_unsafe_h
     end
 
     permitted.permit!

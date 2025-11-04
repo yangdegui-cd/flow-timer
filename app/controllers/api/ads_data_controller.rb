@@ -7,36 +7,40 @@ class Api::AdsDataController < ApplicationController
     ads_account_id = params[:ads_account_id]
     project_id = params[:project_id]
     platform = params[:platform]
+    dimensions = params[:dimensions]
+    metrics = params[:metrics]
+
     page = params[:page]&.to_i || 1
     per_page = params[:per_page]&.to_i || 20
+    order_by = params[:order_by] || dimensions.first
+    order_direction = params[:order_direction] || 'desc'
 
-    query = AdsMergeDatum.includes(:ads_account, :project)
+    # 获取指标的SQL表达式
 
+    metrics_sql = AdsMetric.where(key: metrics).ordered.map(&:sql_expression)
+
+    select_columns = dimensions + AdsMetric.where(key: metrics).ordered.map(&:key)
+    #如果排序字段不在选择列中，默认按第一个维度排序.
+    order_by = dimensions.first if select_columns.exclude?(order_by)
+    select_columns_sql = dimensions + metrics_sql
+
+    query = AdsMergeDatum.where("1=1")
     # 筛选项目
     if project_id.present?
       query = query.where(project_id: project_id)
     end
-
     # 筛选平台
     if platform.present?
       query = query.where(platform: platform)
     end
-
     # 筛选广告账户
     if ads_account_id.present?
       query = query.where(ads_account_id: ads_account_id)
     end
-
     # 筛选日期范围
     if params[:start_date].present? && params[:end_date].present?
       query = query.where(date: params[:start_date]..params[:end_date])
     end
-
-    # 筛选活动
-    if params[:campaign_name].present?
-      query = query.where('campaign_name LIKE ?', "%#{params[:campaign_name]}%")
-    end
-
     # 搜索
     if params[:search].present?
       search_term = "%#{params[:search]}%"
@@ -46,23 +50,25 @@ class Api::AdsDataController < ApplicationController
       )
     end
 
+    # 分组
+    query = query.group(dimensions.map { |d| "ads_merge_data.#{d}" })
+    total_count = query.count.size
+
+    query = query.select(select_columns_sql)
     # 排序
-    order_by = params[:order_by] || 'date'
-    order_direction = params[:order_direction] || 'desc'
-    query = query.order("#{order_by} #{order_direction}")
+    order_by_sql = AdsMetric.find_by(key: order_by)&.sql_expression || order_by
+    order_direction_sql = order_direction.to_i == -1 ? 'DESC' : 'ASC'
+    query = query.order(Arel.sql("#{order_by_sql} #{order_direction_sql}"))
+
 
     # 分页
-    total_count = query.count
-    ads_data = query.offset((page - 1) * per_page).limit(per_page)
+    query = query.offset((page - 1) * per_page).limit(per_page)
+    puts query.to_sql
+    ads_data = AdsMergeDatum.connection.execute(query.to_sql)
+
 
     render json: {
-      data: ads_data.map { |data|
-        data.as_json.merge(
-          ads_account_name: data.ads_account.name,
-          project_name: data.project.name,
-          platform_name: data.ads_account.ads_platform.name
-        )
-      },
+      data: ads_data&.map { |row| select_columns.zip(row).to_h },
       pagination: {
         current_page: page,
         per_page: per_page,
@@ -235,32 +241,26 @@ class Api::AdsDataController < ApplicationController
 
   # 获取广告账户列表
   def accounts
-    project_id = params[:project_id]
-    platform = params[:platform]
 
     accounts_query = AdsAccount.active.includes(:ads_platform, :project)
 
     # 筛选项目
-    if project_id.present?
-      accounts_query = accounts_query.where(project_id: project_id)
-    end
-
-    # 筛选平台
-    if platform.present?
-      accounts_query = accounts_query.joins(:ads_platform).where(ads_platforms: { slug: platform.downcase })
-    end
 
     accounts = accounts_query.map { |account|
-      {
-        id: account.id,
-        name: account.name,
-        account_id: account.account_id,
-        platform: account.ads_platform.name,
-        project: account.project.name,
-        data_count: AdsMergeDatum.where(ads_account: account).count
-      }
+      account.as_json({
+                        include: {
+                          ads_platform: {
+                            only: [:id, :name]
+                          },
+                          project: {
+                            only: [:id, :name]
+                          }
+                        },
+                      })
     }
 
-    render json: accounts
+    render json: ok(accounts)
   end
+
+  private
 end

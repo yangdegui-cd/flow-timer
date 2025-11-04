@@ -10,3 +10,9 @@ fetch_all_facebook_reports:
   class: "FetchAllFacebookReportJob"
   queue: "queue-ads-data"
   args:
+
+check_all_automation_rules:
+  cron: "15 * * * * Asia/Hong_Kong"
+  class: "CheckAllAutomationRuleJob"
+  queue: "check_automation_rule"
+  args:

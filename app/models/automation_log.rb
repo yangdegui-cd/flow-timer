@@ -77,7 +77,7 @@ class AutomationLog < ApplicationRecord
     when '项目编辑'
       action
     when '规则触发'
-      "广告: \"#{remark["ad_name"]}\" 触发自动化投放规则: \"#{remark["rule"]["name"]}\""
+      "广告: \"#{remark["ad_name"]}\" 触发自动化投放规则: \"#{remark["rule"] && remark["rule"]["name"]}\""
     when '定时任务'
       action
     when '调整广告投放'

@@ -1,40 +1,32 @@
-class Api::MetricsController < ApplicationController
-  skip_before_action :authenticate_user!, only: [:index, :show, :categories, :calculate]
-  skip_before_action :validate_permission!, only: [:index, :show, :categories, :calculate]
+class Api::AdsMetricsController < ApplicationController
+  skip_before_action :authenticate_user!, only: [:index, :show, :dimensions, :calculate]
+  skip_before_action :validate_permission!, only: [:index, :show, :dimensions, :calculate]
 
   # GET /api/metrics
   # 获取指标列表
   def index
-    render json ok(Metric.active.ordered)
+    render json: ok(AdsMetric.active.ordered.map(&:as_json))
   end
 
-  # GET /api/metrics/categories
-  # 获取分组的指标
-  def categories
-    grouped_metrics = Metric.active.ordered.group_by(&:category)
-
-    result = grouped_metrics.map do |category, metrics|
+  def dimensions
+    dimensions = AdsDimension.active.ordered.group_by(&:category).map do |category, dimensions|
       {
         category: category,
-        category_name: Metric::CATEGORIES[category.to_sym] || category,
-        metrics: metrics.as_json(
-          only: [:id, :name_cn, :name_en, :description, :sql_expression,
-                 :unit, :color, :data_source]
-        )
+        dimensions: dimensions.map(&:as_json)
       }
     end
 
-    render json: { categories: result }
+    render json: ok(dimensions)
   end
 
   # GET /api/metrics/:id
   # 获取单个指标详情
   def show
-    metric = Metric.find(params[:id])
+    metric = AdsMetric.find(params[:id])
 
     render json: {
       metric: metric.as_json(
-        only: [:id, :name_cn, :name_en, :description, :sql_expression,
+        only: [:id, :display_name, :key, :description, :sql_expression,
                :unit, :color, :category, :data_source, :filter_max,
                :filter_min, :sort_order]
       )
@@ -108,9 +100,9 @@ class Api::MetricsController < ApplicationController
       end
 
       grouped_data = query
-        .select(select_fields.join(', '))
-        .group(group_fields.join(', '))
-        .order(group_fields.first)
+                       .select(select_fields.join(', '))
+                       .group(group_fields.join(', '))
+                       .order(group_fields.first)
 
       results = format_grouped_results(grouped_data, time_dimension, dimensions, metrics)
 
@@ -134,8 +126,8 @@ class Api::MetricsController < ApplicationController
 
         {
           metric_id: metric.id,
-          name_cn: metric.name_cn,
-          name_en: metric.name_en,
+          display_name: metric.display_name,
+          key: metric.key,
           value: value,
           formatted_value: metric.format_value(value),
           unit: metric.unit,
@@ -144,8 +136,8 @@ class Api::MetricsController < ApplicationController
       rescue => e
         {
           metric_id: metric.id,
-          name_cn: metric.name_cn,
-          name_en: metric.name_en,
+          display_name: metric.display_name,
+          key: metric.key,
           error: e.message
         }
       end
@@ -263,8 +255,8 @@ class Api::MetricsController < ApplicationController
         value = row["metric_#{metric.id}"]
         {
           metric_id: metric.id,
-          name_cn: metric.name_cn,
-          name_en: metric.name_en,
+          display_name: metric.display_name,
+          key: metric.key,
           value: value,
           formatted_value: metric.format_value(value),
           unit: metric.unit,

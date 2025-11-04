@@ -50,7 +50,7 @@ const handleBack = () => {
 </script>
 
 <template>
-  <div class="bg-white border-b border-surface p-6">
+  <div class=" border-b border-surface p-6">
     <div class="flex items-center justify-between">
       <!-- 左侧标题区域 -->
       <div class="flex items-center gap-3">
@@ -69,7 +69,7 @@ const handleBack = () => {
         <!-- 标题和描述 -->
         <div>
           <h1 :class="['font-bold text-gray-900 flex items-center gap-3', titleSize]">
-            <i v-if="icon" :class="[icon, iconColor, iconSize]"></i>
+            <i v-if="icon" :class="[icon, iconColor, iconSize]" class="text-primary"></i>
             {{ title }}
           </h1>
           <p v-if="description" class="text-gray-600 mt-1 text-sm">

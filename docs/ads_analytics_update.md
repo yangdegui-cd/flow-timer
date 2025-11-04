@@ -112,7 +112,7 @@ const queryData = async () => {
       "metrics": [
         {
           "metric_id": 1,
-          "name_cn": "展示(平台)",
+          "display_name": "展示(平台)",
           "value": 176821,
           "formatted_value": "176821",
           "unit": "次",

@@ -10,7 +10,70 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2025_10_29_041154) do
+ActiveRecord::Schema[7.1].define(version: 2025_11_03_093122) do
+  create_table "ad_states", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
+    t.string "platform", null: false, comment: "广告平台: facebook, google, tiktok等"
+    t.bigint "ads_account_id", null: false, comment: "广告账户ID"
+    t.string "campaign_id", null: false, comment: "广告系列ID"
+    t.string "campaign_name", comment: "广告系列名称"
+    t.string "campaign_effective_status", comment: "广告系列实际状态"
+    t.string "campaign_objective", comment: "广告目标: APP_INSTALLS, CONVERSIONS等"
+    t.string "campaign_buying_type", comment: "购买类型: AUCTION, RESERVATION"
+    t.string "adset_id", null: false, comment: "广告组ID"
+    t.string "adset_name", comment: "广告组名称"
+    t.string "adset_effective_status", comment: "广告组实际状态"
+    t.string "ad_id", null: false, comment: "广告ID"
+    t.string "ad_name", comment: "广告名称"
+    t.string "ad_effective_status", comment: "广告实际状态"
+    t.boolean "is_active", default: false, comment: "是否正在投放"
+    t.decimal "daily_budget", precision: 15, scale: 2, comment: "每日预算（元）"
+    t.decimal "lifetime_budget", precision: 15, scale: 2, comment: "总预算（元）"
+    t.string "budget_remaining", comment: "剩余预算"
+    t.string "spend_cap", comment: "花费上限"
+    t.decimal "bid_amount", precision: 15, scale: 2, comment: "出价金额（元）"
+    t.string "bid_strategy", comment: "出价策略"
+    t.string "optimization_goal", comment: "优化目标"
+    t.string "billing_event", comment: "计费事件"
+    t.json "targeting", comment: "定向设置（JSON）"
+    t.string "creative_id", comment: "创意ID"
+    t.string "creative_name", comment: "创意名称"
+    t.text "image_url", comment: "图片素材URL"
+    t.string "image_hash", comment: "图片哈希"
+    t.string "video_id", comment: "视频ID"
+    t.text "video_url", comment: "视频URL"
+    t.text "thumbnail_url", comment: "视频缩略图URL"
+    t.text "ad_title", comment: "广告标题"
+    t.text "ad_body", comment: "广告正文"
+    t.text "ad_description", comment: "广告描述"
+    t.string "call_to_action", comment: "行动号召按钮"
+    t.text "link_url", comment: "落地页链接"
+    t.datetime "start_time", comment: "开始时间"
+    t.datetime "stop_time", comment: "结束时间"
+    t.datetime "platform_created_time", comment: "平台创建时间"
+    t.datetime "platform_updated_time", comment: "平台更新时间"
+    t.datetime "synced_at", comment: "最后同步时间"
+    t.string "sync_status", default: "pending", comment: "同步状态: pending, synced, error"
+    t.text "sync_error", comment: "同步错误信息"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "unique_key", limit: 32, comment: "MD5哈希唯一键"
+    t.index ["ad_id"], name: "index_ad_states_on_ad_id"
+    t.index ["ads_account_id"], name: "index_ad_states_on_ads_account_id"
+    t.index ["adset_id"], name: "index_ad_states_on_adset_id"
+    t.index ["campaign_id"], name: "index_ad_states_on_campaign_id"
+    t.index ["creative_id"], name: "index_ad_states_on_creative_id"
+    t.index ["is_active"], name: "index_ad_states_on_is_active"
+    t.index ["platform", "ad_id"], name: "idx_ad_states_platform_ad"
+    t.index ["platform", "ad_name"], name: "idx_ad_states_platform_ad_name"
+    t.index ["platform", "adset_id"], name: "idx_ad_states_platform_adset"
+    t.index ["platform", "adset_name"], name: "idx_ad_states_platform_adset_name"
+    t.index ["platform", "campaign_id"], name: "idx_ad_states_platform_campaign"
+    t.index ["platform", "campaign_name"], name: "idx_ad_states_platform_campaign_name"
+    t.index ["platform"], name: "index_ad_states_on_platform"
+    t.index ["synced_at"], name: "index_ad_states_on_synced_at"
+    t.index ["unique_key"], name: "index_ad_states_on_unique_key", unique: true
+  end
+
   create_table "ads_accounts", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
     t.string "name", null: false
     t.string "account_id", null: false
@@ -46,11 +109,11 @@ ActiveRecord::Schema[7.1].define(version: 2025_10_29_041154) do
     t.string "hour", comment: "小时 00-23"
     t.datetime "datetime", comment: "精确到小时的时间"
     t.string "campaign_network", comment: "推广活动网络（对应 campaign_name）"
-    t.string "campaign_network_id", comment: "推广活动网络ID（对应 campaign_id）"
+    t.string "campaign_id_network", comment: "推广活动网络ID（对应 campaign_id）"
     t.string "adgroup_network", comment: "广告组网络（对应 adset_name）"
-    t.string "adgroup_network_id", comment: "广告组网络ID（对应 adset_id）"
+    t.string "adgroup_id_network", comment: "广告组网络ID（对应 adset_id）"
     t.string "creative_network", comment: "创意网络（对应 ad_name/creative_name）"
-    t.string "creative_network_id", comment: "创意网络ID（对应 ad_id/creative_id）"
+    t.string "creative_id_network", comment: "创意网络ID（对应 ad_id/creative_id）"
     t.bigint "installs", default: 0, comment: "安装数"
     t.bigint "network_clicks", default: 0, comment: "网络点击数（对应 clicks）"
     t.bigint "network_impressions", default: 0, comment: "网络展示数（对应 impressions）"
@@ -169,6 +232,43 @@ ActiveRecord::Schema[7.1].define(version: 2025_10_29_041154) do
     t.index ["year", "week"], name: "idx_ads_data_year_week"
   end
 
+  create_table "ads_dimensions", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
+    t.string "display_name"
+    t.string "name"
+    t.string "column"
+    t.string "category"
+    t.string "description"
+    t.integer "sort_order", default: 0
+    t.boolean "is_active", default: true
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.json "display_config", comment: "前端展示配置（宽度、对齐方式等）"
+    t.index ["column"], name: "index_ads_dimensions_on_column", unique: true
+    t.index ["name"], name: "index_ads_dimensions_on_name", unique: true
+  end
+
+  create_table "ads_metrics", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
+    t.string "display_name", null: false, comment: "中文名称"
+    t.string "key", null: false, comment: "英文名称"
+    t.text "description", comment: "描述"
+    t.text "sql_expression", null: false, comment: "SQL表达式"
+    t.string "unit", comment: "单位"
+    t.string "color", comment: "展示颜色"
+    t.decimal "filter_max", precision: 15, scale: 2, comment: "筛选最大值"
+    t.decimal "filter_min", precision: 15, scale: 2, comment: "筛选最小值"
+    t.string "category", comment: "分类"
+    t.string "data_source", comment: "数据源：platform(平台数据), adjust(Adjust数据), calculated(计算指标)"
+    t.integer "sort_order", default: 0, comment: "排序"
+    t.boolean "is_active", default: true, comment: "是否启用"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.json "display_config", comment: "前端展示配置（对齐方式、格式化等）"
+    t.index ["category"], name: "index_metrics_on_category"
+    t.index ["data_source"], name: "index_metrics_on_data_source"
+    t.index ["is_active"], name: "index_metrics_on_is_active"
+    t.index ["key"], name: "index_metrics_on_name_en", unique: true
+  end
+
   create_table "ads_platforms", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
     t.string "name", null: false
     t.string "slug", null: false
@@ -213,6 +313,8 @@ ActiveRecord::Schema[7.1].define(version: 2025_10_29_041154) do
     t.boolean "enabled", default: true, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "time_type", default: "recent", null: false, comment: "时间类型：recent-最近，range-范围"
+    t.json "time_range_config", comment: "时间范围配置（当time_type为range时使用）"
     t.index ["enabled"], name: "index_automation_rules_on_enabled"
     t.index ["project_id", "enabled"], name: "index_automation_rules_on_project_id_and_enabled"
     t.index ["project_id"], name: "index_automation_rules_on_project_id"
@@ -236,30 +338,19 @@ ActiveRecord::Schema[7.1].define(version: 2025_10_29_041154) do
     t.string "adjust_api_server", default: "https://dash.adjust.com/control-center/reports-service/report"
     t.string "facebook_app_id"
     t.string "facebook_app_secret"
-    t.string "facebook_auth_callback_url", limit: 225
     t.text "facebook_access_token"
     t.datetime "facebook_token_expired_at"
-  end
-
-  create_table "metrics", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
-    t.string "name_cn", null: false, comment: "中文名称"
-    t.string "name_en", null: false, comment: "英文名称"
-    t.text "description", comment: "描述"
-    t.text "sql_expression", null: false, comment: "SQL表达式"
-    t.string "unit", comment: "单位"
-    t.string "color", comment: "展示颜色"
-    t.decimal "filter_max", precision: 15, scale: 2, comment: "筛选最大值"
-    t.decimal "filter_min", precision: 15, scale: 2, comment: "筛选最小值"
-    t.string "category", comment: "分类"
-    t.string "data_source", comment: "数据源：platform(平台数据), adjust(Adjust数据), calculated(计算指标)"
-    t.integer "sort_order", default: 0, comment: "排序"
-    t.boolean "is_active", default: true, comment: "是否启用"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["category"], name: "index_metrics_on_category"
-    t.index ["data_source"], name: "index_metrics_on_data_source"
-    t.index ["is_active"], name: "index_metrics_on_is_active"
-    t.index ["name_en"], name: "index_metrics_on_name_en", unique: true
+    t.text "google_ads_developer_token", comment: "Google Ads 开发者令牌"
+    t.string "google_ads_client_id", comment: "Google Ads OAuth 客户端ID"
+    t.string "google_ads_client_secret", comment: "Google Ads OAuth 客户端密钥"
+    t.text "google_ads_refresh_token", comment: "Google Ads 刷新令牌"
+    t.string "google_ads_customer_id", comment: "Google Ads 客户账户ID"
+    t.string "tiktok_app_id", comment: "TikTok 应用ID"
+    t.string "tiktok_app_secret", comment: "TikTok 应用密钥"
+    t.text "tiktok_access_token", comment: "TikTok 访问令牌"
+    t.datetime "tiktok_token_expired_at", comment: "TikTok 令牌过期时间"
+    t.string "api_domain", comment: "后端API域名(含端口), 如: 192.168.101.99:3000"
+    t.boolean "api_use_ssl", default: false, comment: "后端API是否启用SSL"
   end
 
   create_table "projects", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
@@ -396,6 +487,7 @@ ActiveRecord::Schema[7.1].define(version: 2025_10_29_041154) do
     t.index ["status"], name: "index_sys_users_on_status"
   end
 
+  add_foreign_key "ad_states", "ads_accounts"
   add_foreign_key "ads_accounts", "ads_platforms"
   add_foreign_key "ads_accounts", "projects"
   add_foreign_key "ads_accounts", "sys_users"

@@ -10,8 +10,8 @@ class Project < ApplicationRecord
   validates :active_ads_automate, inclusion: { in: [true, false] }
   validates :status, inclusion: { in: %w[active inactive archived] }
 
-  scope :active, -> { where(active_ads_automate: true) }
-  scope :inactive, -> { where(active_ads_automate: false) }
+  scope :active, -> { where(status: 'active') }
+  scope :automation_enabled, -> { where(active_ads_automate: true) }
   scope :by_status, ->(status) { where(status: status) }
 
   enum status: {

@@ -5,7 +5,7 @@ class CreateAdsMergeDataView < ActiveRecord::Migration[7.1]
       CREATE OR REPLACE VIEW ads_merge_data AS
       SELECT
         a.*,
-        b.installs AS adjust_install,
+        b.installs AS adjust_installs,
         b.cost AS adjust_spend,
         b.cohort_all_revenue,
         b.all_revenue_total_d0,

@@ -19,9 +19,17 @@ export interface Config {
   facebook_access_token: string
   facebook_token_expired_at: string
   website_base_url: string
-  facebook_auth_callback_url: string
+  google_ads_client_id: string
+  google_ads_client_secret: string
+  google_ads_developer_token: string
+  google_ads_refresh_token: string
+  google_ads_customer_id: string
   created_at?: string
   updated_at?: string
+  api_domain?: string
+  api_use_ssl: boolean
+  facebook_auth_callback_url: string
+  google_auth_callback_url: string
 }
 
 export interface ConfigResponse {
@@ -86,6 +94,20 @@ export class ConfigApi extends BaseApi {
    */
   async getFacebookAuthUrl(): Promise<{ success: boolean; auth_url?: string; message?: string }> {
     return this.get<{ success: boolean; auth_url?: string; message?: string }>('facebook_auth_url')
+  }
+
+  /**
+   * 测试 Google Ads 凭证
+   */
+  async testGoogleConnection(): Promise<TestConnectionResponse> {
+    return this.post<TestConnectionResponse>('test_google')
+  }
+
+  /**
+   * 获取 Google Ads 授权 URL
+   */
+  async getGoogleAuthUrl(): Promise<{ success: boolean; auth_url?: string; message?: string }> {
+    return this.get<{ success: boolean; auth_url?: string; message?: string }>('google_auth_url')
   }
 }
 

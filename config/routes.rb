@@ -77,6 +77,9 @@ Rails.application.routes.draw do
     post :test_facebook
     get :facebook_auth_url
     get :facebook_callback
+    post :test_google
+    get :google_auth_url
+    get :google_callback
   end
 
   # 项目管理路由
@@ -162,10 +165,9 @@ Rails.application.routes.draw do
     end
 
     # 指标配置API
-    resources :metrics, only: [:index, :show] do
+    resources :ads_metrics, only: [:index, :show] do
       collection do
-        get :categories
-        post :calculate
+        get :dimensions
       end
     end
   end

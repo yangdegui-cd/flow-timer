@@ -8,10 +8,22 @@ import InputNumber from 'primevue/inputnumber'
 import Dropdown from 'primevue/dropdown'
 import ToggleButton from 'primevue/togglebutton'
 import Divider from 'primevue/divider'
+import RadioButton from 'primevue/radiobutton'
 import ConditionGroupDisplay, { type TriggerCondition } from './ConditionGroupDisplay.vue'
 import ConditionEditDialog from './ConditionEditDialog.vue'
 import { actionOptions, getActionByValue } from '@/data/options/automation-actions'
 import type { AutomationRule } from '@/api/automation-rule-api'
+import DateRangeSelector from "@/views/_selector/DateRangeSelector.vue";
+interface TimeRangeConfig {
+  start_date: {
+    type: 'absolute' | 'relative'
+    date: string | number
+  }
+  end_date: {
+    type: 'absolute' | 'relative'
+    date: string | number
+  }
+}
 
 interface Props {
   visible: boolean
@@ -50,8 +62,10 @@ const timeGranularityOptions = [
 // 规则表单数据
 const newRule = ref({
   name: '',
+  timeType: 'recent' as 'recent' | 'range',
   timeGranularity: 'hour',
   timeRange: 1,
+  timeRangeConfig: null as TimeRangeConfig | null,
   conditionGroup: {
     id: Date.now(),
     type: 'group' as const,
@@ -90,8 +104,10 @@ watch(() => props.visible, (visible) => {
       // 编辑模式：加载规则数据
       newRule.value = {
         name: props.rule.name,
+        timeType: (props.rule as any).time_type || 'recent',
         timeGranularity: props.rule.time_granularity || 'hour',
         timeRange: props.rule.time_range || 1,
+        timeRangeConfig: (props.rule as any).time_range_config || null,
         conditionGroup: props.rule.condition_group ? JSON.parse(JSON.stringify(props.rule.condition_group)) : {
           id: Date.now(),
           type: 'group',
@@ -113,8 +129,10 @@ watch(() => props.visible, (visible) => {
 const resetForm = () => {
   newRule.value = {
     name: '',
+    timeType: 'recent',
     timeGranularity: 'hour',
     timeRange: 1,
+    timeRangeConfig: null,
     conditionGroup: {
       id: Date.now(),
       type: 'group',
@@ -229,11 +247,19 @@ const handleSave = () => {
     return
   }
 
+  // 如果时间类型是范围，验证时间范围配置
+  if (newRule.value.timeType === 'range' && !newRule.value.timeRangeConfig) {
+    toast.add({ severity: 'warn', summary: '提示', detail: '请配置时间范围', life: 3000 })
+    return
+  }
+
   // 准备数据并触发保存事件
   const ruleData = {
     name: newRule.value.name,
+    time_type: newRule.value.timeType,
     time_granularity: newRule.value.timeGranularity,
     time_range: newRule.value.timeRange,
+    time_range_config: newRule.value.timeRangeConfig,
     condition_group: newRule.value.conditionGroup,
     action: newRule.value.action,
     action_value: newRule.value.actionValue,
@@ -246,12 +272,12 @@ const handleSave = () => {
 
 <template>
   <Dialog
-    :visible="visible"
-    modal
-    :header="isEditMode ? '编辑自动化规则' : '添加自动化规则'"
-    :style="{ width: '800px', maxWidth: '90vw' }"
-    :dismissableMask="true"
-    @update:visible="emit('update:visible', $event)"
+      :visible="visible"
+      modal
+      :header="isEditMode ? '编辑自动化规则' : '添加自动化规则'"
+      :style="{ width: '800px', maxWidth: '90vw' }"
+      :dismissableMask="true"
+      @update:visible="emit('update:visible', $event)"
   >
     <div class="space-y-6">
       <!-- 规则名称 -->
@@ -262,13 +288,13 @@ const handleSave = () => {
           <span class="text-red-500 ml-1">*</span>
         </label>
         <InputText
-          v-model="newRule.name"
-          placeholder="例如:高CPI自动暂停"
-          class="w-full"
+            v-model="newRule.name"
+            placeholder="例如:高CPI自动暂停"
+            class="w-full"
         />
       </div>
 
-      <Divider />
+      <Divider/>
 
       <!-- 时间参数 -->
       <div class="space-y-3">
@@ -277,34 +303,53 @@ const handleSave = () => {
           <span class="text-sm font-semibold text-gray-700">时间参数</span>
         </div>
 
-        <div class="grid grid-cols-2 gap-4">
-          <div class="space-y-2">
-            <label class="text-sm font-medium text-gray-700">时间粒度</label>
-            <Dropdown
-              v-model="newRule.timeGranularity"
-              :options="timeGranularityOptions"
-              optionLabel="label"
-              optionValue="value"
-              placeholder="选择时间粒度"
-              class="w-full"
-            />
+        <div class="flex gap-4 items-start">
+          <!-- 时间类型选择 -->
+          <div class="space-y-2" style="min-width: 120px;">
+            <label class="text-sm font-medium text-gray-700">时间类型</label>
+            <SelectButton v-model="newRule.timeType"
+                          :options="[{ label: '最近', value: 'recent' }, { label: '范围', value: 'range' }]"
+                          option-label="label"
+                          option-value="value"
+                          class="w-full"/>
           </div>
 
-          <div class="space-y-2">
-            <label class="text-sm font-medium text-gray-700">时间范围</label>
-            <InputNumber
-              v-model="newRule.timeRange"
-              :min="1"
-              :max="365"
-              placeholder="输入数字"
-              class="w-full"
-            />
-            <span class="text-xs text-gray-500">{{ timeRangeDescription }}</span>
+          <!-- 最近时间配置 -->
+          <div v-if="newRule.timeType === 'recent'" class="flex-1 grid grid-cols-2 gap-4">
+            <div class="space-y-2">
+              <label class="text-sm font-medium text-gray-700">时间粒度</label>
+              <Dropdown
+                  v-model="newRule.timeGranularity"
+                  :options="timeGranularityOptions"
+                  optionLabel="label"
+                  optionValue="value"
+                  placeholder="选择时间粒度"
+                  class="w-full"
+              />
+            </div>
+
+            <div class="space-y-2">
+              <label class="text-sm font-medium text-gray-700">时间范围</label>
+              <InputNumber
+                  v-model="newRule.timeRange"
+                  :min="1"
+                  :max="365"
+                  placeholder="输入数字"
+                  class="w-full"
+              />
+              <span class="text-xs text-gray-500">{{ timeRangeDescription }}</span>
+            </div>
+          </div>
+
+          <!-- 日期范围配置 -->
+          <div v-if="newRule.timeType === 'range'" class="flex-1">
+            <label class="text-sm font-medium text-gray-700">日期范围</label>
+            <DateRangeSelector v-model="newRule.timeRangeConfig"/>
           </div>
         </div>
       </div>
 
-      <Divider />
+      <Divider/>
 
       <!-- 触发条件 -->
       <div class="space-y-3">
@@ -318,20 +363,20 @@ const handleSave = () => {
 
         <!-- 条件组显示（递归） -->
         <ConditionGroupDisplay
-          :group="newRule.conditionGroup"
-          :level="0"
-          :stringMetricOptions="stringMetricOptions"
-          :numericOperatorOptions="numericOperatorOptions"
-          :stringOperatorOptions="stringOperatorOptions"
-          @remove="removeConditionOrGroup"
-          @add-condition="addConditionToGroup"
-          @add-group="addGroupToRoot"
-          @edit="editCondition"
-          @toggle-logic="toggleGroupLogic"
+            :group="newRule.conditionGroup"
+            :level="0"
+            :stringMetricOptions="stringMetricOptions"
+            :numericOperatorOptions="numericOperatorOptions"
+            :stringOperatorOptions="stringOperatorOptions"
+            @remove="removeConditionOrGroup"
+            @add-condition="addConditionToGroup"
+            @add-group="addGroupToRoot"
+            @edit="editCondition"
+            @toggle-logic="toggleGroupLogic"
         />
       </div>
 
-      <Divider />
+      <Divider/>
 
       <!-- 触发动作 -->
       <div class="space-y-3">
@@ -343,25 +388,24 @@ const handleSave = () => {
         <div class="grid grid-cols-2 gap-4">
           <div class="space-y-2" :class="{ 'col-span-2': !selectedAction?.needsValue }">
             <label class="text-sm font-medium text-gray-700">执行动作</label>
-            <Dropdown
-              v-model="newRule.action"
-              :options="actionOptions"
-              optionLabel="label"
-              optionValue="value"
-              placeholder="选择动作"
-              class="w-full"
-            />
+            <Select
+                v-model="newRule.action"
+                :options="actionOptions"
+                optionLabel="label"
+                optionValue="value"
+                placeholder="选择动作"
+                class="w-full"/>
           </div>
 
           <div v-if="selectedAction?.needsValue" class="space-y-2">
             <label class="text-sm font-medium text-gray-700">调整百分比</label>
             <div class="flex items-center gap-2">
               <InputNumber
-                v-model="newRule.actionValue"
-                :min="1"
-                :max="100"
-                placeholder="输入百分比"
-                class="flex-1"
+                  v-model="newRule.actionValue"
+                  :min="1"
+                  :max="100"
+                  placeholder="输入百分比"
+                  class="flex-1"
               />
               <span class="text-sm text-gray-600">%</span>
             </div>
@@ -370,7 +414,7 @@ const handleSave = () => {
         </div>
       </div>
 
-      <Divider />
+      <Divider/>
 
       <!-- 规则状态 -->
       <div class="flex items-center justify-between">
@@ -379,9 +423,9 @@ const handleSave = () => {
           <span class="text-sm font-medium text-gray-700">创建后立即启用</span>
         </div>
         <ToggleButton
-          v-model="newRule.enabled"
-          onLabel="是"
-          offLabel="否"
+            v-model="newRule.enabled"
+            onLabel="是"
+            offLabel="否"
         />
       </div>
     </div>
@@ -389,31 +433,31 @@ const handleSave = () => {
     <template #footer>
       <div class="flex justify-end gap-2">
         <Button
-          label="取消"
-          severity="secondary"
-          @click="handleClose"
+            label="取消"
+            severity="secondary"
+            @click="handleClose"
         />
         <Button
-          :label="isEditMode ? '保存' : '添加规则'"
-          @click="handleSave"
+            :label="isEditMode ? '保存' : '添加规则'"
+            @click="handleSave"
         />
       </div>
     </template>
 
     <!-- 条件编辑对话框 -->
     <ConditionEditDialog
-      v-model:visible="showConditionDialog"
-      :condition="editingCondition"
-      :isEdit="isConditionEditMode"
-      :targetGroup="targetGroup"
-      :stringMetricOptions="stringMetricOptions"
-      :numericOperatorOptions="numericOperatorOptions"
-      :stringOperatorOptions="stringOperatorOptions"
-      :availableAccountNames="availableAccountNames"
-      :availableCampaignNames="availableCampaignNames"
-      :availableAdsetNames="availableAdsetNames"
-      :availableAdNames="availableAdNames"
-      @save="handleConditionSaved"
+        v-model:visible="showConditionDialog"
+        :condition="editingCondition"
+        :isEdit="isConditionEditMode"
+        :targetGroup="targetGroup"
+        :stringMetricOptions="stringMetricOptions"
+        :numericOperatorOptions="numericOperatorOptions"
+        :stringOperatorOptions="stringOperatorOptions"
+        :availableAccountNames="availableAccountNames"
+        :availableCampaignNames="availableCampaignNames"
+        :availableAdsetNames="availableAdsetNames"
+        :availableAdNames="availableAdNames"
+        @save="handleConditionSaved"
     />
   </Dialog>
 </template>

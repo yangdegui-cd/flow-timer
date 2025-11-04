@@ -130,8 +130,8 @@ Content-Type: application/json
   "results": [
     {
       "metric_id": 1,
-      "name_cn": "展示(平台)",
-      "name_en": "impressions_p",
+      "display_name": "展示(平台)",
+      "key": "impressions_p",
       "value": 747612,
       "formatted_value": "747612",
       "unit": "次",
@@ -139,8 +139,8 @@ Content-Type: application/json
     },
     {
       "metric_id": 6,
-      "name_cn": "花费(平台)",
-      "name_en": "spend_p",
+      "display_name": "花费(平台)",
+      "key": "spend_p",
       "value": "4766.82",
       "formatted_value": "$4766.82",
       "unit": "$",
@@ -163,7 +163,7 @@ Content-Type: application/json
       "metrics": [
         {
           "metric_id": 1,
-          "name_cn": "展示(平台)",
+          "display_name": "展示(平台)",
           "value": 176821,
           "formatted_value": "176821",
           "unit": "次",
@@ -171,7 +171,7 @@ Content-Type: application/json
         },
         {
           "metric_id": 6,
-          "name_cn": "花费(平台)",
+          "display_name": "花费(平台)",
           "value": "901.2",
           "formatted_value": "$901.2",
           "unit": "$",

@@ -1,7 +1,7 @@
-class Metric < ApplicationRecord
+class AdsMetric < ApplicationRecord
   # 验证
-  validates :name_cn, presence: true
-  validates :name_en, presence: true, uniqueness: true
+  validates :display_name, presence: true
+  validates :key, presence: true, uniqueness: true
   validates :sql_expression, presence: true
 
   # 作用域

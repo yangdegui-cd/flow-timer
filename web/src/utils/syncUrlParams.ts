@@ -10,7 +10,7 @@ import { useRouter, useRoute } from 'vue-router'
  * @returns 同步控制函数
  */
 export const useSyncUrlParams = <T extends Record<string, any>>(
-  filters: Ref<T>,
+  filters: Ref<T> ,
   options?: {
     // 需要排除的字段,不同步到URL
     exclude?: string[]
@@ -138,7 +138,7 @@ export const useSyncUrlParams = <T extends Record<string, any>>(
 
     isUpdating = true
 
-    const query = serializeFilters(filters.value)
+    const query = serializeFilters(unref(filters))
 
     // 只有当query真正改变时才更新路由
     const currentQuery = route.query
@@ -164,13 +164,13 @@ export const useSyncUrlParams = <T extends Record<string, any>>(
     const parsed = deserializeQuery(route.query)
     // 合并到filters,保留filters中未在URL中的字段
     Object.keys(parsed).forEach(key => {
-      filters.value[key as keyof T] = parsed[key as keyof T] as any
+      unref(filters)[key as keyof T] = parsed[key as keyof T] as any
     })
     isUpdating = false
   }
 
   // 监听filters变化,同步到URL
-  watch(() => filters.value, () => syncToUrl(), { deep: true })
+  watch(() => unref(filters), () => syncToUrl(), { deep: true })
 
   // 监听URL变化,同步到filters
   watch(() => route.query, () => syncFromUrl(), { immediate: true })

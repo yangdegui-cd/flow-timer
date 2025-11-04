@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, ref } from 'vue'
 import Button from 'primevue/button'
-import { useMetricsStore } from '@/stores/metrics'
+import { useToast } from 'primevue/usetoast'
+import { useMetricsStore } from "@/stores/metrics";
 
 // 单个触发条件的结构
 export interface TriggerCondition {
@@ -35,20 +36,14 @@ const emit = defineEmits<{
   toggleLogic: [group: TriggerCondition]
 }>()
 
-const metricsStore = useMetricsStore()
-
-// 加载指标数据
-onMounted(async () => {
-  if (metricsStore.metrics.length === 0) {
-    await metricsStore.fetchMetrics()
-  }
-})
-
+const toast = useToast()
+const {metrics} = storeToRefs(useMetricsStore())
+const {getMetricName} = useMetricsStore()
 // 数值指标选项（从 API 加载）
 const numericMetricOptions = computed(() => {
-  return metricsStore.metrics.map(m => ({
-    label: m.name_cn,
-    value: m.name_en,
+  return unref(metrics).map(m => ({
+    label: m.display_name,
+    value: m.key,
     unit: m.unit
   }))
 })
@@ -101,7 +96,7 @@ const hasMultipleChildren = (group: TriggerCondition) => {
               class="px-2 py-1 rounded text-xs cursor-pointer w-9 text-center bg-gray-100 text-gray-600 hover:bg-gray-200"
               @click="emit('toggleLogic', group)"
             >
-              {{ group.logic === 'AND' ? '或' : '且' }}
+              {{ group.logic === 'AND' ? '且' : '或' }}
             </div>
             <div v-else class="w-9"></div>
 
@@ -118,7 +113,7 @@ const hasMultipleChildren = (group: TriggerCondition) => {
             <!-- 条件显示 -->
             <div class="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded text-sm flex-1">
               <span class="text-gray-700">
-                {{ getMetricLabel(child.metric) }}
+                {{ getMetricName(child.metric) }}
                 {{ getOperatorSymbol(child.operator) }}
                 {{ getConditionValueText(child) }}
               </span>
@@ -143,7 +138,7 @@ const hasMultipleChildren = (group: TriggerCondition) => {
               class="px-2 py-1 rounded text-xs cursor-pointer w-9 text-center bg-gray-100 text-gray-600 hover:bg-gray-200 flex-shrink-0"
               @click="emit('toggleLogic', group)"
             >
-              {{ group.logic === 'AND' ? '或' : '且' }}
+              {{ group.logic === 'AND' ? '且' : '或' }}
             </div>
             <div v-else class="w-9 flex-shrink-0"></div>
 

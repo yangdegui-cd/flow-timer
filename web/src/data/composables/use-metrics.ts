@@ -1,25 +1,37 @@
 import { onMounted, Ref } from "vue";
-import { Metric } from "@/data/types/ads-types";
+import { AdsMetric } from "@/data/types/ads-types";
 import metricsApi from "@/api/metrics-api";
 
-export const useMetrics = (metrics: Ref<Metric[]>, toast, loading?: Ref<boolean>) => {
+export const useMetrics = (toast) => {
+  const metrics: Ref<AdsMetric[]> = ref([]);
+  const loading: Ref<boolean> | null = ref(false);
+
   const loadMetrics = () => {
-    loading?.value = true;
+    loading.value = true
+    if (unref(metrics).length > 0) return loading.value = false
+
     metricsApi.list()
       .then(res => {
         metrics.value = res
       })
       .catch(err => {
-        toast.add({ severity: 'err', summary: '错误', detail: err.msg, life: 3000 })
+        toast.add({ severity: 'error', summary: '错误', detail: err.msg, life: 3000 })
       })
       .finally(() => {
-        loading?.value = false;
+        loading.value = false
       });
   }
+
+  const getMetric = (key: string): AdsMetric | undefined => unref(metrics).find(metric => metric.key === key)
+  const getMetricName = (key: string): string | undefined => getMetric(key)?.display_name
 
   onMounted(() => loadMetrics());
 
   return {
-    loadMetrics
+    metrics,
+    loading,
+    loadMetrics,
+    getMetric,
+    getMetricName
   }
 }
